@@ -13,6 +13,8 @@ use clap::{ArgAction, Args, Parser, Subcommand};
 use recipe::Recipe;
 use spec::ProjectSpec;
 
+const DEFAULT_RECIPES_DIR: &str = "recipes";
+
 #[derive(Debug, Parser)]
 #[command(
     name = "stackpilot",
@@ -185,6 +187,7 @@ fn main() -> Result<()> {
             spec,
             no_git,
         } => {
+            let recipes_dir = resolve_recipes_dir(recipes_dir);
             let project_spec = resolve_spec(name, non_interactive, spec)?;
             let destination =
                 scaffold::create_project(&project_spec, &recipe, &recipes_dir, &output)?;
@@ -207,6 +210,7 @@ fn main() -> Result<()> {
             non_interactive,
             spec,
         } => {
+            let recipes_dir = resolve_recipes_dir(recipes_dir);
             let project_spec = resolve_spec(name, non_interactive, spec)?;
             let files = scaffold::plan_project(&project_spec, &recipe, &recipes_dir)?;
 
@@ -224,6 +228,7 @@ fn main() -> Result<()> {
             keep_engine,
             force,
         } => {
+            let recipes_dir = resolve_recipes_dir(recipes_dir);
             let name = name.unwrap_or(current_repository_name()?);
             let project_spec = if non_interactive {
                 spec.into_project_spec(name)?
@@ -234,6 +239,7 @@ fn main() -> Result<()> {
             bootstrap::run(&project_spec, &recipe, &recipes_dir, keep_engine, force)?;
         }
         Commands::Recipes { recipes_dir } => {
+            let recipes_dir = resolve_recipes_dir(recipes_dir);
             let recipes = Recipe::discover(&recipes_dir)?;
             if recipes.is_empty() {
                 println!("No recipes found in {}", recipes_dir.display());
@@ -243,10 +249,39 @@ fn main() -> Result<()> {
                 }
             }
         }
-        Commands::Doctor { recipes_dir } => doctor::run(&recipes_dir)?,
+        Commands::Doctor { recipes_dir } => {
+            let recipes_dir = resolve_recipes_dir(recipes_dir);
+            doctor::run(&recipes_dir)?;
+        }
     }
 
     Ok(())
+}
+
+fn resolve_recipes_dir(recipes_dir: PathBuf) -> PathBuf {
+    let local_exists = recipes_dir.is_dir();
+    resolve_recipes_dir_with_executable(recipes_dir, local_exists, env::current_exe().ok())
+}
+
+fn resolve_recipes_dir_with_executable(
+    recipes_dir: PathBuf,
+    local_exists: bool,
+    executable: Option<PathBuf>,
+) -> PathBuf {
+    if recipes_dir != PathBuf::from(DEFAULT_RECIPES_DIR) || local_exists {
+        return recipes_dir;
+    }
+
+    if let Some(executable) = executable
+        && let Some(parent) = executable.parent()
+    {
+        let installed_recipes = parent.join(DEFAULT_RECIPES_DIR);
+        if installed_recipes.is_dir() {
+            return installed_recipes;
+        }
+    }
+
+    recipes_dir
 }
 
 fn resolve_spec(
@@ -269,4 +304,36 @@ fn current_repository_name() -> Result<String> {
         .and_then(|name| name.to_str())
         .map(str::to_string)
         .context("current directory does not have a valid UTF-8 name")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{fs, path::PathBuf};
+
+    use tempfile::tempdir;
+
+    use super::resolve_recipes_dir_with_executable;
+
+    #[test]
+    fn falls_back_to_recipes_beside_installed_executable() {
+        let install = tempdir().expect("install directory");
+        let recipes = install.path().join("recipes");
+        fs::create_dir(&recipes).expect("create recipes directory");
+        let executable = install.path().join("stackpilot.exe");
+
+        let resolved = resolve_recipes_dir_with_executable(
+            PathBuf::from("recipes"),
+            false,
+            Some(executable),
+        );
+
+        assert_eq!(resolved, recipes);
+    }
+
+    #[test]
+    fn preserves_explicit_recipe_directory() {
+        let custom = PathBuf::from("custom-recipes");
+        let resolved = resolve_recipes_dir_with_executable(custom.clone(), false, None);
+        assert_eq!(resolved, custom);
+    }
 }
