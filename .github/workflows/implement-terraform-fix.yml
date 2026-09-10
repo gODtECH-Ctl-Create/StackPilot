@@ -20,7 +20,9 @@ jobs:
         with:
           components: rustfmt, clippy
       - name: Apply patch
-        run: python .github/scripts/patch_terraform.py
+        run: |
+          python .github/scripts/patch_terraform.py
+          python .github/scripts/fix_terraform_sanitize.py
       - name: Format and validate
         run: |
           cargo fmt --all
