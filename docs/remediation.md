@@ -132,3 +132,10 @@ stackpilot fix --cloud GCP
 ```
 
 The command still previews by default. Add `--apply` only after reviewing the plan. When Terraform is missing and the selected cloud is valid, StackPilot can create `infra/terraform/main.tf`, `variables.tf`, and `README.md` from the same tested recipe templates used for greenfield projects. Existing or unrecognized Terraform files are never overwritten. Symlinked target paths are refused.
+
+
+## Verified health-check remediation
+
+When `stackpilot inspect` reports that a supported backend has no health endpoint, `stackpilot fix` can now plan a real `GET /health` endpoint for verified Axum, Chi, NestJS, FastAPI, Spring Boot, and ASP.NET Core layouts. It does not satisfy readiness by adding a comment or configuration marker: the remediation changes application routing or, for the standard Spring Boot layout, creates the tested health controller.
+
+Health source edits use compare-before-write protection. StackPilot stores the exact source text used to create the preview and, during `--apply`, refuses the update if that file changed in the meantime. Ambiguous router/application startup patterns, unsupported package layouts, symlinked paths, or unknown stacks remain deferred rather than guessed.
