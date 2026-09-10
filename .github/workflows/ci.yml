@@ -71,6 +71,38 @@ jobs:
           grep -q '^Required threshold: 100$' threshold-fail.txt
           grep -q 'below the required threshold' threshold-fail.txt
 
+      - name: Smoke test safe repository fix
+        run: |
+          rm -rf /tmp/stackpilot-fix-smoke
+          mkdir -p /tmp/stackpilot-fix-smoke
+          printf '{"dependencies":{"@nestjs/core":"latest"},"devDependencies":{"typescript":"latest"}}\n' > /tmp/stackpilot-fix-smoke/package.json
+          printf '{}\n' > /tmp/stackpilot-fix-smoke/tsconfig.json
+          printf 'export const application = true;\n' > /tmp/stackpilot-fix-smoke/app.ts
+
+          ./target/debug/stackpilot fix /tmp/stackpilot-fix-smoke > fix-preview.txt
+          grep -q '^Mode: preview$' fix-preview.txt
+          grep -q 'create .env.example' fix-preview.txt
+          grep -q 'create .gitignore' fix-preview.txt
+          grep -q 'create .stackpilot.toml' fix-preview.txt
+          grep -q 'Preview only: no files were changed' fix-preview.txt
+          test ! -f /tmp/stackpilot-fix-smoke/.env.example
+          test ! -f /tmp/stackpilot-fix-smoke/.stackpilot.toml
+          grep -q 'application = true' /tmp/stackpilot-fix-smoke/app.ts
+
+          ./target/debug/stackpilot fix /tmp/stackpilot-fix-smoke --apply > fix-apply.txt
+          grep -q '^Mode: apply$' fix-apply.txt
+          grep -q '^Applied 3 safe change(s).$' fix-apply.txt
+          grep -Eq '^Readiness: [0-9]+/100 -> [0-9]+/100$' fix-apply.txt
+          test -f /tmp/stackpilot-fix-smoke/.env.example
+          test -f /tmp/stackpilot-fix-smoke/.gitignore
+          test -f /tmp/stackpilot-fix-smoke/.stackpilot.toml
+          grep -q '^.env$' /tmp/stackpilot-fix-smoke/.gitignore
+          grep -q 'application = true' /tmp/stackpilot-fix-smoke/app.ts
+
+          ./target/debug/stackpilot fix /tmp/stackpilot-fix-smoke > fix-second-preview.txt
+          grep -q '^Safe automatic changes$' fix-second-preview.txt
+          grep -q '^  none$' fix-second-preview.txt
+
       - name: Smoke test installed recipe resolution
         run: |
           rm -rf /tmp/stackpilot-install /tmp/stackpilot-user
