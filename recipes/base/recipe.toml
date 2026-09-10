@@ -1,0 +1,14 @@
+name = "base"
+description = "Minimal production-minded project foundation"
+
+[[files]]
+template = "README.md.j2"
+destination = "README.md"
+
+[[files]]
+template = "gitignore.j2"
+destination = ".gitignore"
+
+[[files]]
+template = "env.example.j2"
+destination = ".env.example"
