@@ -38,7 +38,7 @@ impl ProjectSpec {
         let languages = ["Rust", "Go", "TypeScript", "Python", "Java", "C#"];
         let language = select(&theme, "Language", &languages)?;
 
-        let frameworks = frameworks_for(&language);
+        let frameworks = supported_frameworks(&language).unwrap_or(&["None"]);
         let framework = select(&theme, "Framework", frameworks)?;
 
         let databases = ["None", "PostgreSQL", "MySQL", "SQLite", "MongoDB"];
@@ -90,6 +90,17 @@ impl ProjectSpec {
         validate_non_empty("database", &database)?;
         validate_non_empty("cloud", &cloud)?;
 
+        if let Some(supported) = supported_frameworks(&language)
+            && !supported
+                .iter()
+                .any(|candidate| candidate.eq_ignore_ascii_case(&framework))
+        {
+            bail!(
+                "framework '{framework}' is not supported for {language}; choose one of: {}",
+                supported.join(", ")
+            );
+        }
+
         if terraform && cloud.eq_ignore_ascii_case("None") {
             bail!("Terraform requires a cloud selection");
         }
@@ -117,15 +128,16 @@ fn select(theme: &ColorfulTheme, prompt: &str, items: &[&str]) -> Result<String>
     Ok(items[index].to_string())
 }
 
-fn frameworks_for(language: &str) -> &'static [&'static str] {
+fn supported_frameworks(language: &str) -> Option<&'static [&'static str]> {
     match language {
-        "Rust" => &["Axum", "Actix Web", "Rocket", "None"],
-        "Go" => &["Chi", "Gin", "Fiber", "None"],
-        "TypeScript" => &["NestJS", "Next.js", "Fastify", "Express", "None"],
-        "Python" => &["FastAPI", "Django", "Flask", "None"],
-        "Java" => &["Spring Boot", "Quarkus", "Micronaut", "None"],
-        "C#" => &["ASP.NET Core", "Worker Service", "Blazor", "None"],
-        _ => &["None"],
+        "Rust" => Some(&["Axum", "Actix Web", "Rocket", "None"]),
+        "Go" => Some(&["Chi", "Gin", "Fiber", "None"]),
+        "TypeScript" => Some(&["NestJS", "Next.js", "Fastify", "Express", "None"]),
+        "Python" => Some(&["FastAPI", "Django", "Flask", "None"]),
+        "Java" => Some(&["Spring Boot", "Quarkus", "Micronaut", "None"]),
+        "C#" => Some(&["ASP.NET Core", "Worker Service", "Blazor", "None"]),
+        "Generic" => Some(&["None"]),
+        _ => None,
     }
 }
 
@@ -182,6 +194,22 @@ mod tests {
         .expect("valid spec");
         assert_eq!(spec.language, "Go");
         assert!(spec.ci);
+    }
+
+    #[test]
+    fn rejects_invalid_builtin_framework_pair() {
+        let result = ProjectSpec::configured(
+            "api".to_string(),
+            "Backend API".to_string(),
+            "Rust".to_string(),
+            "NestJS".to_string(),
+            "None".to_string(),
+            "None".to_string(),
+            false,
+            true,
+            false,
+        );
+        assert!(result.is_err());
     }
 
     #[test]
