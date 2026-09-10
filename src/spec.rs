@@ -27,9 +27,9 @@ impl ProjectSpec {
 
         let kinds = [
             "Backend API",
-            "Frontend",
-            "Full Stack",
             "Worker",
+            "Full Stack",
+            "Frontend",
             "CLI",
             "Library",
         ];
@@ -37,20 +37,28 @@ impl ProjectSpec {
 
         let languages = ["Rust", "Go", "TypeScript", "Python", "Java", "C#"];
         let language = select(&theme, "Language", &languages)?;
+        let framework = recommended_framework(&language).to_string();
+        println!("StackPilot recommends {language} + {framework}");
 
-        let frameworks = supported_frameworks(&language).unwrap_or(&["None"]);
-        let framework = select(&theme, "Framework", frameworks)?;
+        let database = if matches!(kind.as_str(), "Frontend" | "CLI" | "Library") {
+            "None".to_string()
+        } else {
+            let databases = ["PostgreSQL", "None", "MySQL", "MongoDB", "SQLite"];
+            select(&theme, "Database", &databases)?
+        };
 
-        let databases = ["None", "PostgreSQL", "MySQL", "SQLite", "MongoDB"];
-        let database = select(&theme, "Database", &databases)?;
+        let cloud = if matches!(kind.as_str(), "CLI" | "Library") {
+            "None".to_string()
+        } else {
+            let clouds = ["AWS", "None", "Azure", "GCP"];
+            select(&theme, "Cloud", &clouds)?
+        };
 
-        let clouds = ["None", "AWS", "Azure", "GCP"];
-        let cloud = select(&theme, "Cloud", &clouds)?;
-
-        let docker = Confirm::with_theme(&theme)
-            .with_prompt("Include container foundation?")
-            .default(true)
-            .interact()?;
+        let docker = !matches!(kind.as_str(), "CLI" | "Library")
+            && Confirm::with_theme(&theme)
+                .with_prompt("Include production container foundation?")
+                .default(true)
+                .interact()?;
 
         let ci = Confirm::with_theme(&theme)
             .with_prompt("Include CI foundation?")
@@ -84,19 +92,36 @@ impl ProjectSpec {
         terraform: bool,
     ) -> Result<Self> {
         validate_project_name(&name)?;
-        validate_non_empty("project type", &kind)?;
-        validate_non_empty("language", &language)?;
-        validate_non_empty("framework", &framework)?;
-        validate_non_empty("database", &database)?;
-        validate_non_empty("cloud", &cloud)?;
+        validate_choice(
+            "project type",
+            &kind,
+            &["Backend API", "Worker", "Full Stack", "Frontend", "CLI", "Library", "Generic"],
+        )?;
+        validate_choice(
+            "language",
+            &language,
+            &["Rust", "Go", "TypeScript", "Python", "Java", "C#", "Generic"],
+        )?;
+        validate_choice(
+            "database",
+            &database,
+            &["PostgreSQL", "MySQL", "SQLite", "MongoDB", "None"],
+        )?;
+        validate_choice("cloud", &cloud, &["AWS", "Azure", "GCP", "None"])?;
 
-        if let Some(supported) = supported_frameworks(&language)
-            && !supported
-                .iter()
-                .any(|candidate| candidate.eq_ignore_ascii_case(&framework))
+        let framework = if framework.eq_ignore_ascii_case("Auto") {
+            recommended_framework(&language).to_string()
+        } else {
+            framework
+        };
+
+        let supported = supported_frameworks(&language);
+        if !supported
+            .iter()
+            .any(|candidate| candidate.eq_ignore_ascii_case(&framework))
         {
             bail!(
-                "framework '{framework}' is not supported for {language}; choose one of: {}",
+                "framework '{framework}' is not a StackPilot golden path for {language}; choose one of: {}",
                 supported.join(", ")
             );
         }
@@ -128,16 +153,27 @@ fn select(theme: &ColorfulTheme, prompt: &str, items: &[&str]) -> Result<String>
     Ok(items[index].to_string())
 }
 
-fn supported_frameworks(language: &str) -> Option<&'static [&'static str]> {
+fn recommended_framework(language: &str) -> &'static str {
     match language {
-        "Rust" => Some(&["Axum", "Actix Web", "Rocket", "None"]),
-        "Go" => Some(&["Chi", "Gin", "Fiber", "None"]),
-        "TypeScript" => Some(&["NestJS", "Next.js", "Fastify", "Express", "None"]),
-        "Python" => Some(&["FastAPI", "Django", "Flask", "None"]),
-        "Java" => Some(&["Spring Boot", "Quarkus", "Micronaut", "None"]),
-        "C#" => Some(&["ASP.NET Core", "Worker Service", "Blazor", "None"]),
-        "Generic" => Some(&["None"]),
-        _ => None,
+        "Rust" => "Axum",
+        "Go" => "Chi",
+        "TypeScript" => "NestJS",
+        "Python" => "FastAPI",
+        "Java" => "Spring Boot",
+        "C#" => "ASP.NET Core",
+        _ => "None",
+    }
+}
+
+fn supported_frameworks(language: &str) -> &'static [&'static str] {
+    match language {
+        "Rust" => &["Axum", "None"],
+        "Go" => &["Chi", "None"],
+        "TypeScript" => &["NestJS", "None"],
+        "Python" => &["FastAPI", "None"],
+        "Java" => &["Spring Boot", "None"],
+        "C#" => &["ASP.NET Core", "None"],
+        _ => &["None"],
     }
 }
 
@@ -156,16 +192,19 @@ fn validate_project_name(name: &str) -> Result<()> {
     Ok(())
 }
 
-fn validate_non_empty(label: &str, value: &str) -> Result<()> {
-    if value.trim().is_empty() {
-        bail!("{label} cannot be empty");
+fn validate_choice(label: &str, value: &str, allowed: &[&str]) -> Result<()> {
+    if !allowed
+        .iter()
+        .any(|candidate| candidate.eq_ignore_ascii_case(value))
+    {
+        bail!("unsupported {label} '{value}'; choose one of: {}", allowed.join(", "));
     }
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ProjectSpec, validate_project_name};
+    use super::{ProjectSpec, recommended_framework, validate_project_name};
 
     #[test]
     fn accepts_safe_project_names() {
@@ -179,12 +218,12 @@ mod tests {
     }
 
     #[test]
-    fn creates_configured_non_interactive_spec() {
+    fn resolves_auto_to_golden_path() {
         let spec = ProjectSpec::configured(
             "worker".to_string(),
             "Worker".to_string(),
             "Go".to_string(),
-            "Chi".to_string(),
+            "Auto".to_string(),
             "None".to_string(),
             "None".to_string(),
             false,
@@ -192,17 +231,17 @@ mod tests {
             false,
         )
         .expect("valid spec");
-        assert_eq!(spec.language, "Go");
-        assert!(spec.ci);
+        assert_eq!(spec.framework, "Chi");
+        assert_eq!(recommended_framework("Python"), "FastAPI");
     }
 
     #[test]
-    fn rejects_invalid_builtin_framework_pair() {
+    fn rejects_non_golden_framework_pair() {
         let result = ProjectSpec::configured(
             "api".to_string(),
             "Backend API".to_string(),
             "Rust".to_string(),
-            "NestJS".to_string(),
+            "Actix Web".to_string(),
             "None".to_string(),
             "None".to_string(),
             false,
@@ -218,7 +257,7 @@ mod tests {
             "worker".to_string(),
             "Worker".to_string(),
             "Rust".to_string(),
-            "None".to_string(),
+            "Auto".to_string(),
             "None".to_string(),
             "None".to_string(),
             true,
