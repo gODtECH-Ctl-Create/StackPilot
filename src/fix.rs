@@ -1,4 +1,7 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result, bail};
 
@@ -59,7 +62,9 @@ pub fn run(root: &Path, apply: bool) -> Result<()> {
 
     if !apply {
         if !plan.changes.is_empty() {
-            println!("\nPreview only: no files were changed. Re-run with --apply to write these safe changes.");
+            println!(
+                "\nPreview only: no files were changed. Re-run with --apply to write these safe changes."
+            );
         }
         return Ok(());
     }
@@ -135,7 +140,8 @@ fn plan_environment_fixes(
         changes.push(PlannedChange {
             path: PathBuf::from(".env.example"),
             kind: ChangeKind::Create,
-            description: "add a safe environment-variable example without secret values".to_string(),
+            description: "add a safe environment-variable example without secret values"
+                .to_string(),
             content: environment_example(root),
         });
     }
@@ -185,8 +191,9 @@ fn plan_metadata_fix(
     changes.push(PlannedChange {
         path: PathBuf::from(".stackpilot.toml"),
         kind: ChangeKind::Create,
-        description: "adopt the repository into StackPilot metadata without changing application code"
-            .to_string(),
+        description:
+            "adopt the repository into StackPilot metadata without changing application code"
+                .to_string(),
         content: stackpilot_metadata(root, report)?,
     });
 
@@ -381,13 +388,29 @@ mod tests {
 
         let plan = plan_repository(repo.path()).expect("fix plan");
 
-        assert!(plan.changes.iter().any(|change| change.path == std::path::Path::new(".env.example")));
-        assert!(plan.changes.iter().any(|change| change.path == std::path::Path::new(".gitignore")));
-        assert!(plan.changes.iter().any(|change| change.path == std::path::Path::new(".stackpilot.toml")));
+        assert!(
+            plan.changes
+                .iter()
+                .any(|change| change.path == std::path::Path::new(".env.example"))
+        );
+        assert!(
+            plan.changes
+                .iter()
+                .any(|change| change.path == std::path::Path::new(".gitignore"))
+        );
+        assert!(
+            plan.changes
+                .iter()
+                .any(|change| change.path == std::path::Path::new(".stackpilot.toml"))
+        );
         assert!(plan.deferred.iter().any(|fix| fix.control == "Docker"));
         assert!(plan.deferred.iter().any(|fix| fix.control == "CI/CD"));
         assert!(plan.deferred.iter().any(|fix| fix.control == "Terraform"));
-        assert!(plan.deferred.iter().any(|fix| fix.control == "Health check"));
+        assert!(
+            plan.deferred
+                .iter()
+                .any(|fix| fix.control == "Health check")
+        );
     }
 
     #[test]
@@ -415,8 +438,11 @@ mod tests {
     fn preserves_existing_example_and_appends_gitignore_only_when_needed() {
         let repo = tempdir().expect("repository");
         fs::write(repo.path().join("requirements.txt"), "fastapi\n").expect("requirements");
-        fs::write(repo.path().join(".env.example"), "CUSTOM_VALUE=placeholder\n")
-            .expect("env example");
+        fs::write(
+            repo.path().join(".env.example"),
+            "CUSTOM_VALUE=placeholder\n",
+        )
+        .expect("env example");
         fs::write(repo.path().join(".gitignore"), "__pycache__/\n").expect("gitignore");
 
         let plan = plan_repository(repo.path()).expect("fix plan");
@@ -443,16 +469,25 @@ mod tests {
     #[test]
     fn no_environment_change_when_hygiene_already_passes() {
         let repo = tempdir().expect("repository");
-        fs::write(repo.path().join("Cargo.toml"), "[package]\nname='demo'\nversion='0.1.0'\n")
-            .expect("manifest");
+        fs::write(
+            repo.path().join("Cargo.toml"),
+            "[package]\nname='demo'\nversion='0.1.0'\n",
+        )
+        .expect("manifest");
         fs::write(repo.path().join(".env.example"), "PORT=3000\n").expect("env example");
         fs::write(repo.path().join(".gitignore"), ".env\n").expect("gitignore");
 
         let plan = plan_repository(repo.path()).expect("fix plan");
 
-        assert!(!plan.changes.iter().any(|change| {
-            matches!(change.path.to_str(), Some(".env.example" | ".gitignore"))
-        }));
-        assert!(plan.changes.iter().any(|change| change.path == std::path::Path::new(".stackpilot.toml")));
+        assert!(
+            !plan.changes.iter().any(|change| {
+                matches!(change.path.to_str(), Some(".env.example" | ".gitignore"))
+            })
+        );
+        assert!(
+            plan.changes
+                .iter()
+                .any(|change| change.path == std::path::Path::new(".stackpilot.toml"))
+        );
     }
 }
