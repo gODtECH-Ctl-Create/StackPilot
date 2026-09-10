@@ -1,0 +1,76 @@
+name: Clean obsolete inspect renderer
+
+on:
+  push:
+    branches: [feat/readiness-score]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: feat/readiness-score
+
+      - name: Remove superseded inspect rendering code
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/inspect.rs')
+          text = path.read_text()
+
+          text, count = re.subn(
+              r'\nimpl FindingStatus \{.*?\n\}\n\n',
+              '\n',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit('FindingStatus symbol implementation was not found exactly once')
+
+          text, count = re.subn(
+              r'\npub fn run\(root: &Path\) -> Result<\(\)> \{.*?\n\}\n\n',
+              '\n',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit('legacy inspect run function was not found exactly once')
+
+          text, count = re.subn(
+              r'\nfn print_report\(report: &InspectionReport\) \{.*?\n\}\n\n(?=#\[derive\(Debug\)\]\nstruct Detection)',
+              '\n',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit('legacy inspect print_report function was not found exactly once')
+
+          path.write_text(text)
+          PY
+
+      - name: Format Rust source
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Apply rustfmt
+        run: cargo fmt --all
+
+      - name: Commit cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/inspect.rs
+          git commit -m 'refactor: remove superseded inspect renderer'
+          git push origin HEAD:feat/readiness-score
