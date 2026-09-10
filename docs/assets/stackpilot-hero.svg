@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="460" viewBox="0 0 1400 460" role="img" aria-labelledby="title desc">
+<title id="title">StackPilot animated project scaffolding hero</title>
+<desc id="desc">Animated terminal-style visualization of StackPilot generating production-minded golden-path repositories.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#080b14"/>
+    <stop offset="0.55" stop-color="#0d1120"/>
+    <stop offset="1" stop-color="#11172a"/>
+  </linearGradient>
+  <linearGradient id="accent" x1="0" x2="1">
+    <stop stop-color="#8bffb0"/>
+    <stop offset="0.55" stop-color="#b7baff"/>
+    <stop offset="1" stop-color="#8d91ff"/>
+  </linearGradient>
+  <linearGradient id="beam" x1="0" x2="1">
+    <stop stop-color="#8bffb0" stop-opacity="0"/>
+    <stop offset="0.5" stop-color="#8bffb0"/>
+    <stop offset="1" stop-color="#8d91ff" stop-opacity="0"/>
+  </linearGradient>
+  <filter id="glow"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0H0V42" fill="none" stroke="#8d91ff" stroke-opacity="0.07"/></pattern>
+  <clipPath id="clip"><rect width="1400" height="460" rx="30"/></clipPath>
+</defs>
+<g clip-path="url(#clip)">
+  <rect width="1400" height="460" fill="url(#bg)"/>
+  <rect width="1400" height="460" fill="url(#grid)"/>
+
+  <ellipse cx="1140" cy="42" rx="280" ry="185" fill="#8d91ff" opacity="0.10" filter="url(#glow)">
+    <animate attributeName="rx" values="240;315;240" dur="7s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.07;0.15;0.07" dur="7s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="205" cy="430" rx="270" ry="155" fill="#8bffb0" opacity="0.08" filter="url(#glow)">
+    <animate attributeName="ry" values="125;175;125" dur="6s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <path d="M-80 360 C210 210 490 430 760 245 S1180 115 1480 265" fill="none" stroke="url(#beam)" stroke-width="2" opacity="0.75">
+    <animate attributeName="stroke-dasharray" values="20 80;140 28;20 80" dur="4.8s" repeatCount="indefinite"/>
+  </path>
+
+  <g transform="translate(70 64)">
+    <rect width="1260" height="320" rx="28" fill="#090d17" fill-opacity="0.88" stroke="#ffffff" stroke-opacity="0.12"/>
+    <rect x="22" y="20" width="1216" height="34" rx="12" fill="#11172a" stroke="#ffffff" stroke-opacity="0.08"/>
+    <circle cx="44" cy="37" r="4" fill="#ff5f57"/>
+    <circle cx="61" cy="37" r="4" fill="#febc2e"/>
+    <circle cx="78" cy="37" r="4" fill="#28c840"/>
+    <text x="104" y="42" fill="#68738b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">STACKPILOT / GOLDEN-PATH ENGINE</text>
+
+    <g transform="translate(42 82)">
+      <rect width="132" height="132" rx="26" fill="#0d1421" stroke="#8bffb0" stroke-opacity="0.55"/>
+      <rect x="28" y="28" width="76" height="76" rx="18" fill="#8bffb0"/>
+      <text x="66" y="76" text-anchor="middle" fill="#07110a" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="900">SP</text>
+      <circle cx="104" cy="28" r="6" fill="#b7baff" filter="url(#glow)">
+        <animate attributeName="r" values="4;8;4" dur="1.8s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+
+    <g transform="translate(208 82)">
+      <text x="0" y="18" fill="#8bffb0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" letter-spacing="2">PRODUCTION-MINDED SCAFFOLDING</text>
+      <text x="0" y="70" fill="url(#accent)" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="850" letter-spacing="-2.5">StackPilot</text>
+      <text x="0" y="103" fill="#9ca8bf" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">one command → one opinionated repository → ready to build</text>
+
+      <g transform="translate(0 135)">
+        <rect width="608" height="82" rx="15" fill="#080b14" stroke="#ffffff" stroke-opacity="0.10"/>
+        <text x="18" y="27" fill="#8bffb0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">$</text>
+        <text x="36" y="27" fill="#e6ebf6" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">stackpilot new payment-service --recipe base</text>
+        <text x="18" y="56" fill="#68738b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">✓ framework selected   ✓ Docker   ✓ CI   ✓ Terraform</text>
+        <rect x="18" y="68" width="560" height="3" rx="1.5" fill="#182235"/>
+        <rect x="18" y="68" width="130" height="3" rx="1.5" fill="#8bffb0">
+          <animate attributeName="width" values="45;540;180;45" dur="4s" repeatCount="indefinite"/>
+        </rect>
+      </g>
+    </g>
+
+    <g transform="translate(1000 82)">
+      <rect width="214" height="216" rx="20" fill="#0d1220" stroke="#8d91ff" stroke-opacity="0.34"/>
+      <text x="20" y="30" fill="#68738b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10">GOLDEN PATHS</text>
+      <text x="20" y="70" fill="#f4f7ff" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="800">6</text>
+      <circle cx="173" cy="58" r="9" fill="#8bffb0"><animate attributeName="opacity" values="1;.25;1" dur="1.5s" repeatCount="indefinite"/></circle>
+      <g fill="#9ca8bf" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">
+        <text x="20" y="103">Rust       → Axum</text>
+        <text x="20" y="123">Go         → Chi</text>
+        <text x="20" y="143">TypeScript → NestJS</text>
+        <text x="20" y="163">Python     → FastAPI</text>
+        <text x="20" y="183">Java       → Spring</text>
+        <text x="20" y="203">C#         → ASP.NET</text>
+      </g>
+    </g>
+
+    <text x="42" y="294" fill="#5f6b82" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" letter-spacing="1">RUST CORE • RECIPE-DRIVEN • DOCKER • CI • TERRAFORM • AWS-FIRST • POSTGRESQL-FIRST</text>
+  </g>
+
+  <text x="700" y="427" text-anchor="middle" fill="#71809d" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" letter-spacing="4">SCAFFOLD / VALIDATE / GENERATE / SHIP</text>
+</g>
+</svg>
