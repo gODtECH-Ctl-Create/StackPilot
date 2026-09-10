@@ -23,7 +23,7 @@ Every generated service follows the same initial contract: a `/health` endpoint,
 
 Tagged releases publish native StackPilot binaries for Linux x86_64, macOS Intel, macOS Apple Silicon, and Windows x86_64.
 
-Linux or macOS:
+After the first release is published, Linux or macOS users can install the latest version with:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.sh | sh
@@ -35,7 +35,7 @@ Windows PowerShell:
 irm https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.ps1 | iex
 ```
 
-Before the first tagged release, contributors can run StackPilot from source with `cargo run --` as shown below.
+Until then, contributors can run StackPilot from source with `cargo run --` as shown below.
 
 ## GitHub template flow
 
