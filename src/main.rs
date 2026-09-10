@@ -1,6 +1,7 @@
 mod bootstrap;
 mod doctor;
 mod git;
+mod inspect;
 mod recipe;
 mod scaffold;
 mod spec;
@@ -159,6 +160,13 @@ enum Commands {
         force: bool,
     },
 
+    /// Inspect an existing repository for technology and production foundations.
+    Inspect {
+        /// Repository directory to inspect. Defaults to the current directory.
+        #[arg(default_value = ".")]
+        path: PathBuf,
+    },
+
     /// List available StackPilot recipes.
     Recipes {
         /// Directory that contains StackPilot recipes.
@@ -237,6 +245,9 @@ fn main() -> Result<()> {
             };
 
             bootstrap::run(&project_spec, &recipe, &recipes_dir, keep_engine, force)?;
+        }
+        Commands::Inspect { path } => {
+            inspect::run(&path)?;
         }
         Commands::Recipes { recipes_dir } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);

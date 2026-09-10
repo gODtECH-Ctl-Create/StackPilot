@@ -47,6 +47,14 @@ jobs:
       - name: Build CLI
         run: cargo build --locked
 
+      - name: Smoke test repository inspection
+        run: |
+          ./target/debug/stackpilot inspect . > inspect.txt
+          grep -q '^StackPilot inspect$' inspect.txt
+          grep -q '^Languages: .*Rust' inspect.txt
+          grep -q 'CI/CD' inspect.txt
+          grep -q 'Production gaps:' inspect.txt
+
       - name: Smoke test installed recipe resolution
         run: |
           rm -rf /tmp/stackpilot-install /tmp/stackpilot-user
