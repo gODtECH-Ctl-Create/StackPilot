@@ -103,6 +103,45 @@ jobs:
           grep -q '^Safe automatic changes$' fix-second-preview.txt
           grep -q '^  none$' fix-second-preview.txt
 
+      - name: Smoke test verified stack adapters
+        run: |
+          rm -rf /tmp/stackpilot-adapter-smoke
+          mkdir -p /tmp/stackpilot-adapter-smoke
+          cat > /tmp/stackpilot-adapter-smoke/go.mod <<'EOF'
+          module example.com/payments
+
+          go 1.27
+
+          require github.com/go-chi/chi/v5 v5.0.0
+          EOF
+          cat > /tmp/stackpilot-adapter-smoke/main.go <<'EOF'
+          package main
+
+          func main() {}
+          EOF
+
+          ./target/debug/stackpilot fix /tmp/stackpilot-adapter-smoke > adapter-preview.txt
+          grep -q 'create Dockerfile' adapter-preview.txt
+          grep -q 'create compose.yaml' adapter-preview.txt
+          grep -q 'create .dockerignore' adapter-preview.txt
+          grep -q 'create .github/workflows/ci.yml' adapter-preview.txt
+          test ! -f /tmp/stackpilot-adapter-smoke/Dockerfile
+          test ! -f /tmp/stackpilot-adapter-smoke/.github/workflows/ci.yml
+
+          ./target/debug/stackpilot fix /tmp/stackpilot-adapter-smoke --apply > adapter-apply.txt
+          test -f /tmp/stackpilot-adapter-smoke/Dockerfile
+          test -f /tmp/stackpilot-adapter-smoke/compose.yaml
+          test -f /tmp/stackpilot-adapter-smoke/.dockerignore
+          test -f /tmp/stackpilot-adapter-smoke/.github/workflows/ci.yml
+          grep -q 'FROM golang:1.27-alpine AS build' /tmp/stackpilot-adapter-smoke/Dockerfile
+          grep -q 'go test ./...' /tmp/stackpilot-adapter-smoke/.github/workflows/ci.yml
+          grep -q '^docker = true$' /tmp/stackpilot-adapter-smoke/.stackpilot.toml
+          grep -q '^ci = true$' /tmp/stackpilot-adapter-smoke/.stackpilot.toml
+
+          ./target/debug/stackpilot inspect /tmp/stackpilot-adapter-smoke > adapter-inspect.txt
+          grep -q 'Docker 15/15' adapter-inspect.txt
+          grep -q 'CI/CD 20/20' adapter-inspect.txt
+
       - name: Smoke test installed recipe resolution
         run: |
           rm -rf /tmp/stackpilot-install /tmp/stackpilot-user
