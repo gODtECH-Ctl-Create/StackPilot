@@ -34,20 +34,47 @@ fi
 asset="stackpilot-${os}-${arch}.tar.gz"
 if [ "$VERSION" = "latest" ]; then
   url="https://github.com/${REPO}/releases/latest/download/${asset}"
+  release_label="latest release"
 else
   case "$VERSION" in
     v*) tag="$VERSION" ;;
     *) tag="v$VERSION" ;;
   esac
   url="https://github.com/${REPO}/releases/download/${tag}/${asset}"
+  release_label="$tag"
 fi
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT INT TERM
 
-printf 'Installing StackPilot (%s/%s) from %s\n' "$os" "$arch" "$VERSION"
-curl --fail --silent --show-error --location "$url" --output "$tmp_dir/$asset"
-tar -xzf "$tmp_dir/$asset" -C "$tmp_dir"
+printf 'Installing StackPilot (%s/%s) from %s\n' "$os" "$arch" "$release_label"
+if ! curl --fail --silent --show-error --location "$url" --output "$tmp_dir/$asset"; then
+  cat >&2 <<EOF
+
+StackPilot installation failed because the release asset '$asset' could not be downloaded.
+
+Requested: $url
+
+This usually means the selected GitHub release does not contain a binary for this platform yet.
+Check the published release assets at:
+https://github.com/${REPO}/releases
+
+To install a specific release, set STACKPILOT_VERSION first, for example:
+STACKPILOT_VERSION=0.1.1
+EOF
+  exit 1
+fi
+
+if ! tar -xzf "$tmp_dir/$asset" -C "$tmp_dir"; then
+  echo "The downloaded StackPilot archive could not be extracted." >&2
+  exit 1
+fi
+
+if [ ! -f "$tmp_dir/stackpilot" ]; then
+  echo "The downloaded archive did not contain the stackpilot binary. The release package may be invalid." >&2
+  exit 1
+fi
+
 mkdir -p "$INSTALL_DIR"
 install -m 0755 "$tmp_dir/stackpilot" "$INSTALL_DIR/stackpilot"
 
