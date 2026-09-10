@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "{{ project_name | replace("_", "-") }}"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+  "fastapi[standard]==0.141.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28,<0.29",
+  "pytest>=8.4,<9",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
