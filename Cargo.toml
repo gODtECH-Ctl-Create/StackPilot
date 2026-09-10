@@ -2,9 +2,12 @@
 name = "stackpilot"
 version = "0.1.0"
 edition = "2024"
-description = "A Rust-powered project scaffolding engine for production-minded repositories"
+description = "Opinionated production project scaffolding across major application ecosystems"
 license = "MIT"
 repository = "https://github.com/gODtECH-Ctl-Create/StackPilot"
+readme = "README.md"
+keywords = ["scaffolding", "devops", "templates", "cli", "platform-engineering"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1"
