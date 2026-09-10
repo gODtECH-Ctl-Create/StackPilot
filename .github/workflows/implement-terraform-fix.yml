@@ -33,6 +33,6 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/main.rs src/fix.rs .github/workflows/ci.yml docs/remediation.md
+          git add src/main.rs src/fix.rs docs/remediation.md
           git commit -m 'feat: add explicit-cloud Terraform remediation'
           git push origin HEAD:feat/fix-terraform
