@@ -50,6 +50,28 @@ pub fn render_in_place(
     render_files(spec, &recipe, &recipe_dir, destination)
 }
 
+pub fn render_destination(
+    spec: &ProjectSpec,
+    recipe_name: &str,
+    recipes_dir: &Path,
+    destination: &Path,
+) -> Result<String> {
+    let (recipe, recipe_dir) = Recipe::load(recipes_dir, recipe_name)?;
+    let selected = selected_files(spec, &recipe)?;
+    let (file, _) = selected
+        .into_iter()
+        .find(|(_, selected_destination)| selected_destination == destination)
+        .with_context(|| {
+            format!(
+                "recipe '{}' does not select {} for the configured project",
+                recipe.name,
+                destination.display()
+            )
+        })?;
+
+    render_file(spec, &recipe, &recipe_dir, file)
+}
+
 fn render_files(
     spec: &ProjectSpec,
     recipe: &Recipe,
@@ -57,18 +79,38 @@ fn render_files(
     destination: &Path,
 ) -> Result<Vec<PathBuf>> {
     let selected = selected_files(spec, recipe)?;
-    let mut env = Environment::new();
     let mut generated = Vec::with_capacity(selected.len());
 
     for (file, relative_destination) in selected {
-        let source = recipe_dir.join("templates").join(&file.template);
-        let template_source = fs::read_to_string(&source)
-            .with_context(|| format!("failed to read template {}", source.display()))?;
+        let rendered = render_file(spec, recipe, recipe_dir, file)?;
+        let target = destination.join(&relative_destination);
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&target, rendered)
+            .with_context(|| format!("failed to write {}", target.display()))?;
+        generated.push(relative_destination);
+    }
 
-        env.add_template_owned(file.template.clone(), template_source)
-            .with_context(|| format!("failed to load template {}", file.template))?;
+    Ok(generated)
+}
 
-        let rendered = env.get_template(&file.template)?.render(context! {
+fn render_file(
+    spec: &ProjectSpec,
+    recipe: &Recipe,
+    recipe_dir: &Path,
+    file: &crate::recipe::RecipeFile,
+) -> Result<String> {
+    let source = recipe_dir.join("templates").join(&file.template);
+    let template_source = fs::read_to_string(&source)
+        .with_context(|| format!("failed to read template {}", source.display()))?;
+
+    let mut env = Environment::new();
+    env.add_template_owned(file.template.clone(), template_source)
+        .with_context(|| format!("failed to load template {}", file.template))?;
+
+    env.get_template(&file.template)?
+        .render(context! {
             project_name => spec.name.as_str(),
             project_kind => spec.kind.as_str(),
             language => spec.language.as_str(),
@@ -80,18 +122,8 @@ fn render_files(
             terraform => spec.terraform,
             recipe_name => recipe.name.as_str(),
             recipe_description => recipe.description.clone().unwrap_or_default(),
-        })?;
-
-        let target = destination.join(&relative_destination);
-        if let Some(parent) = target.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(&target, rendered)
-            .with_context(|| format!("failed to write {}", target.display()))?;
-        generated.push(relative_destination);
-    }
-
-    Ok(generated)
+        })
+        .with_context(|| format!("failed to render template {}", file.template))
 }
 
 fn selected_destinations(spec: &ProjectSpec, recipe: &Recipe) -> Result<Vec<PathBuf>> {
@@ -187,7 +219,9 @@ fn matches_clause(clause: &str, spec: &ProjectSpec) -> Result<bool> {
 
 #[cfg(test)]
 mod tests {
-    use super::{matches_condition, safe_destination};
+    use std::path::Path;
+
+    use super::{matches_condition, render_destination, safe_destination};
     use crate::spec::ProjectSpec;
 
     #[test]
@@ -246,5 +280,28 @@ mod tests {
             !matches_condition("language=Rust && framework=Actix Web", &spec)
                 .expect("condition should evaluate")
         );
+    }
+
+    #[test]
+    fn renders_one_selected_recipe_destination() {
+        let spec = ProjectSpec::configured(
+            "payments".to_string(),
+            "Backend API".to_string(),
+            "Go".to_string(),
+            "Chi".to_string(),
+            "None".to_string(),
+            "None".to_string(),
+            true,
+            false,
+            false,
+        )
+        .expect("valid spec");
+
+        let rendered =
+            render_destination(&spec, "base", Path::new("recipes"), Path::new("Dockerfile"))
+                .expect("render Dockerfile");
+
+        assert!(rendered.contains("FROM golang:1.27-alpine AS build"));
+        assert!(rendered.contains("ENTRYPOINT [\"/app\"]"));
     }
 }

@@ -179,6 +179,10 @@ enum Commands {
         #[arg(default_value = ".")]
         path: PathBuf,
 
+        /// Directory that contains StackPilot recipes used by verified stack adapters.
+        #[arg(long, default_value = "recipes")]
+        recipes_dir: PathBuf,
+
         /// Write the planned safe changes. Without this flag, fix is a dry-run preview.
         #[arg(long)]
         apply: bool,
@@ -266,8 +270,13 @@ fn main() -> Result<()> {
         Commands::Inspect { path, fail_below } => {
             readiness::run(&path, fail_below)?;
         }
-        Commands::Fix { path, apply } => {
-            fix::run(&path, apply)?;
+        Commands::Fix {
+            path,
+            recipes_dir,
+            apply,
+        } => {
+            let recipes_dir = resolve_recipes_dir(recipes_dir);
+            fix::run(&path, &recipes_dir, apply)?;
         }
         Commands::Recipes { recipes_dir } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
