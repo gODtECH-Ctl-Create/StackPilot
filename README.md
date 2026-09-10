@@ -19,6 +19,24 @@ For deployable services, StackPilot defaults toward PostgreSQL, AWS, Docker, CI,
 
 Every generated service follows the same initial contract: a `/health` endpoint, port `3000`, container support, language-native CI, environment metadata, and optional Terraform infrastructure.
 
+## Install
+
+Tagged releases publish native StackPilot binaries for Linux x86_64, macOS Intel, macOS Apple Silicon, and Windows x86_64.
+
+Linux or macOS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.ps1 | iex
+```
+
+Before the first tagged release, contributors can run StackPilot from source with `cargo run --` as shown below.
+
 ## GitHub template flow
 
 The lowest-friction path is GitHub Actions:
@@ -31,6 +49,12 @@ The lowest-friction path is GitHub Actions:
 For local interactive setup after cloning:
 
 ```bash
+stackpilot bootstrap
+```
+
+When working from source:
+
+```bash
 cargo run -- bootstrap
 ```
 
@@ -39,7 +63,7 @@ StackPilot detects the repository name, recommends the golden framework for the 
 To test bootstrap without removing the engine:
 
 ```bash
-cargo run -- bootstrap --keep-engine
+stackpilot bootstrap --keep-engine
 ```
 
 ## Create a separate project
@@ -47,19 +71,19 @@ cargo run -- bootstrap --keep-engine
 Interactive:
 
 ```bash
-cargo run -- new
+stackpilot new
 ```
 
 Or create a named project:
 
 ```bash
-cargo run -- new payment-service --recipe base
+stackpilot new payment-service --recipe base
 ```
 
 For automation, `--framework Auto` resolves to the StackPilot golden path:
 
 ```bash
-cargo run -- new payment-service \
+stackpilot new payment-service \
   --recipe base \
   --non-interactive \
   --kind "Backend API" \
@@ -75,7 +99,7 @@ cargo run -- new payment-service \
 Preview exactly what will be generated without writing files:
 
 ```bash
-cargo run -- plan payment-service \
+stackpilot plan payment-service \
   --non-interactive \
   --kind "Backend API" \
   --language Go \
@@ -90,8 +114,8 @@ cargo run -- plan payment-service \
 ## Other commands
 
 ```bash
-cargo run -- recipes
-cargo run -- doctor
+stackpilot recipes
+stackpilot doctor
 ```
 
 ## Current capabilities
@@ -115,6 +139,7 @@ cargo run -- doctor
 - Persistent `.stackpilot.toml` project profile
 - Transactional cleanup when project generation fails
 - CI compatibility matrix that generates and builds every golden path
+- Cross-platform tagged binary releases and one-command installers
 
 ## Architecture
 
