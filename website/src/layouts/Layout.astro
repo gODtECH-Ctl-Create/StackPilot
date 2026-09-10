@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { currentTag, latestReleaseUrl } from '../data/site';
 
 interface Props {
   title?: string;
@@ -34,7 +35,7 @@ const href = (path = '') => `${base}${path}`;
         <a class="brand" href={href()} aria-label="StackPilot home">
           <span class="brand-mark">SP</span>
           <span>StackPilot</span>
-          <span class="alpha">v0.1</span>
+          <span class="alpha">{currentTag}</span>
         </a>
         <nav class="nav-links" aria-label="Primary navigation">
           <a class:list={[{ active: current === 'install' }]} href={href('install/')}>Install</a>
@@ -53,7 +54,7 @@ const href = (path = '') => `${base}${path}`;
       <div class="shell footer-row">
         <div>
           <div class="brand footer-brand"><span class="brand-mark">SP</span><span>StackPilot</span></div>
-          <p>Production-minded repositories without the setup tax.</p>
+          <p>Production-minded repositories without the setup tax. <a href={latestReleaseUrl} target="_blank" rel="noreferrer">Current release {currentTag} ↗</a></p>
         </div>
         <div class="footer-links">
           <a href={href('docs/')}>Documentation</a>
