@@ -1,0 +1,47 @@
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+)
+
+type healthResponse struct {
+	Status  string `json:"status"`
+	Service string `json:"service"`
+}
+
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	router := chi.NewRouter()
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(middleware.Recoverer)
+	router.Get("/health", health)
+
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: router,
+	}
+
+	log.Printf("{{ project_name }} listening on :%s", port)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
+}
+
+func health(writer http.ResponseWriter, _ *http.Request) {
+	writer.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(writer).Encode(healthResponse{
+		Status:  "ok",
+		Service: "{{ project_name }}",
+	})
+}
