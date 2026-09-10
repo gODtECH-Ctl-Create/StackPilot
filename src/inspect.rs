@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 const MAX_SCAN_DEPTH: usize = 6;
 const MAX_TEXT_FILE_SIZE: u64 = 512 * 1024;
@@ -568,9 +568,7 @@ fn detect_health_check(files: &[PathBuf]) -> bool {
         is_source_or_config_file(path)
             && read_small_text(path).is_some_and(|content| {
                 let content = content.to_ascii_lowercase();
-                HEALTH_MARKERS
-                    .iter()
-                    .any(|marker| content.contains(marker))
+                HEALTH_MARKERS.iter().any(|marker| content.contains(marker))
             })
     })
 }
@@ -715,7 +713,7 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use super::{inspect_repository, FindingStatus};
+    use super::{FindingStatus, inspect_repository};
 
     #[test]
     fn detects_nestjs_production_foundations() {
@@ -741,14 +739,9 @@ mod tests {
         )
         .expect("source");
         fs::create_dir_all(repo.path().join(".github/workflows")).expect("workflows");
-        fs::write(repo.path().join(".github/workflows/ci.yml"), "name: CI")
-            .expect("workflow");
+        fs::write(repo.path().join(".github/workflows/ci.yml"), "name: CI").expect("workflow");
         fs::create_dir_all(repo.path().join("infra/terraform")).expect("terraform dir");
-        fs::write(
-            repo.path().join("infra/terraform/main.tf"),
-            "terraform {}",
-        )
-        .expect("terraform");
+        fs::write(repo.path().join("infra/terraform/main.tf"), "terraform {}").expect("terraform");
 
         let report = inspect_repository(repo.path()).expect("inspection");
 
@@ -809,8 +802,11 @@ mod tests {
         )
         .expect("nested package");
         fs::create_dir_all(repo.path().join("target/debug")).expect("target");
-        fs::write(repo.path().join("target/debug/generated.rs"), "fn main() {}")
-            .expect("generated source");
+        fs::write(
+            repo.path().join("target/debug/generated.rs"),
+            "fn main() {}",
+        )
+        .expect("generated source");
         fs::write(repo.path().join("README.md"), "# Empty repository").expect("readme");
 
         let report = inspect_repository(repo.path()).expect("inspection");
