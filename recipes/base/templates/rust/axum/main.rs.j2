@@ -1,0 +1,43 @@
+use std::{env, net::SocketAddr};
+
+use axum::{Json, Router, routing::get};
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct HealthResponse {
+    status: &'static str,
+    service: &'static str,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
+    let port = env::var("PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(3000);
+
+    let app = Router::new()
+        .route("/", get(root))
+        .route("/health", get(health));
+
+    let address = SocketAddr::from(([0, 0, 0, 0], port));
+    let listener = tokio::net::TcpListener::bind(address).await?;
+
+    tracing::info!(%address, "{{ project_name }} listening");
+    axum::serve(listener, app).await?;
+
+    Ok(())
+}
+
+async fn root() -> &'static str {
+    "{{ project_name }} is running"
+}
+
+async fn health() -> Json<HealthResponse> {
+    Json(HealthResponse {
+        status: "ok",
+        service: "{{ project_name }}",
+    })
+}

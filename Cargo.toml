@@ -1,0 +1,21 @@
+[package]
+name = "stackpilot"
+version = "0.1.0"
+edition = "2024"
+description = "Opinionated production project scaffolding across major application ecosystems"
+license = "MIT"
+repository = "https://github.com/gODtECH-Ctl-Create/StackPilot"
+readme = "README.md"
+keywords = ["scaffolding", "devops", "templates", "cli", "platform-engineering"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+dialoguer = "0.11"
+minijinja = { version = "2", features = ["loader"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,176 @@
+name = "base"
+description = "Opinionated production-ready golden paths across major application ecosystems"
+
+[[files]]
+template = "README.md.j2"
+destination = "README.md"
+
+[[files]]
+template = "gitignore.j2"
+destination = ".gitignore"
+
+[[files]]
+template = "env.example.j2"
+destination = ".env.example"
+
+[[files]]
+template = "stackpilot.toml.j2"
+destination = ".stackpilot.toml"
+
+[[files]]
+template = "editorconfig.j2"
+destination = ".editorconfig"
+
+[[files]]
+template = "CONTRIBUTING.md.j2"
+destination = "CONTRIBUTING.md"
+
+[[files]]
+template = "SECURITY.md.j2"
+destination = "SECURITY.md"
+
+[[files]]
+template = "architecture.md.j2"
+destination = "docs/architecture.md"
+
+[[files]]
+template = "PULL_REQUEST_TEMPLATE.md.j2"
+destination = ".github/PULL_REQUEST_TEMPLATE.md"
+
+# Rust + Axum
+[[files]]
+template = "rust/axum/Cargo.toml.j2"
+destination = "Cargo.toml"
+when = "language=Rust && framework=Axum"
+
+[[files]]
+template = "rust/axum/main.rs.j2"
+destination = "src/main.rs"
+when = "language=Rust && framework=Axum"
+
+# Go + Chi
+[[files]]
+template = "go/chi/go.mod.j2"
+destination = "go.mod"
+when = "language=Go && framework=Chi"
+
+[[files]]
+template = "go/chi/main.go.j2"
+destination = "main.go"
+when = "language=Go && framework=Chi"
+
+# TypeScript + NestJS
+[[files]]
+template = "typescript/nestjs/package.json.j2"
+destination = "package.json"
+when = "language=TypeScript && framework=NestJS"
+
+[[files]]
+template = "typescript/nestjs/tsconfig.json.j2"
+destination = "tsconfig.json"
+when = "language=TypeScript && framework=NestJS"
+
+[[files]]
+template = "typescript/nestjs/main.ts.j2"
+destination = "src/main.ts"
+when = "language=TypeScript && framework=NestJS"
+
+[[files]]
+template = "typescript/nestjs/app.module.ts.j2"
+destination = "src/app.module.ts"
+when = "language=TypeScript && framework=NestJS"
+
+[[files]]
+template = "typescript/nestjs/app.controller.ts.j2"
+destination = "src/app.controller.ts"
+when = "language=TypeScript && framework=NestJS"
+
+# Python + FastAPI
+[[files]]
+template = "python/fastapi/pyproject.toml.j2"
+destination = "pyproject.toml"
+when = "language=Python && framework=FastAPI"
+
+[[files]]
+template = "python/fastapi/__init__.py.j2"
+destination = "app/__init__.py"
+when = "language=Python && framework=FastAPI"
+
+[[files]]
+template = "python/fastapi/main.py.j2"
+destination = "app/main.py"
+when = "language=Python && framework=FastAPI"
+
+[[files]]
+template = "python/fastapi/test_main.py.j2"
+destination = "tests/test_main.py"
+when = "language=Python && framework=FastAPI"
+
+# Java + Spring Boot
+[[files]]
+template = "java/spring/pom.xml.j2"
+destination = "pom.xml"
+when = "language=Java && framework=Spring Boot"
+
+[[files]]
+template = "java/spring/Application.java.j2"
+destination = "src/main/java/com/stackpilot/app/Application.java"
+when = "language=Java && framework=Spring Boot"
+
+[[files]]
+template = "java/spring/HealthController.java.j2"
+destination = "src/main/java/com/stackpilot/app/HealthController.java"
+when = "language=Java && framework=Spring Boot"
+
+[[files]]
+template = "java/spring/application.properties.j2"
+destination = "src/main/resources/application.properties"
+when = "language=Java && framework=Spring Boot"
+
+# C# + ASP.NET Core
+[[files]]
+template = "csharp/aspnet/app.csproj.j2"
+destination = "app.csproj"
+when = "language=C# && framework=ASP.NET Core"
+
+[[files]]
+template = "csharp/aspnet/Program.cs.j2"
+destination = "Program.cs"
+when = "language=C# && framework=ASP.NET Core"
+
+# Shared production runtime policy
+[[files]]
+template = "common/Dockerfile.j2"
+destination = "Dockerfile"
+when = "docker"
+
+[[files]]
+template = "common/dockerignore.j2"
+destination = ".dockerignore"
+when = "docker"
+
+[[files]]
+template = "common/compose.yaml.j2"
+destination = "compose.yaml"
+when = "docker"
+
+[[files]]
+template = "common/ci.yml.j2"
+destination = ".github/workflows/ci.yml"
+when = "ci"
+
+# Cloud-agnostic Terraform entry point selected by cloud profile
+[[files]]
+template = "terraform/main.tf.j2"
+destination = "infra/terraform/main.tf"
+when = "terraform"
+
+[[files]]
+template = "terraform/variables.tf.j2"
+destination = "infra/terraform/variables.tf"
+when = "terraform"
+
+[[files]]
+template = "terraform/README.md.j2"
+destination = "infra/terraform/README.md"
+when = "terraform"

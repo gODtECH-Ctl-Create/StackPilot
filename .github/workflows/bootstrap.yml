@@ -1,0 +1,143 @@
+name: Configure StackPilot Template
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: Project name (leave blank to use repository name)
+        required: false
+        type: string
+      project_kind:
+        description: Project type
+        required: true
+        default: Backend API
+        type: choice
+        options:
+          - Backend API
+          - Worker
+          - Full Stack
+          - Frontend
+          - CLI
+          - Library
+      language:
+        description: Programming language
+        required: true
+        default: Rust
+        type: choice
+        options:
+          - Rust
+          - Go
+          - TypeScript
+          - Python
+          - Java
+          - C#
+      framework:
+        description: Framework override. Leave Auto to use StackPilot's blessed framework for the language.
+        required: true
+        default: Auto
+        type: string
+      database:
+        description: Database (PostgreSQL is the default golden path)
+        required: true
+        default: PostgreSQL
+        type: choice
+        options:
+          - PostgreSQL
+          - None
+          - MySQL
+          - MongoDB
+          - SQLite
+      cloud:
+        description: Cloud target (AWS is the default golden path)
+        required: true
+        default: AWS
+        type: choice
+        options:
+          - AWS
+          - None
+          - Azure
+          - GCP
+      docker:
+        description: Include production container foundation
+        required: true
+        default: true
+        type: boolean
+      ci:
+        description: Include CI foundation
+        required: true
+        default: true
+        type: boolean
+      terraform:
+        description: Include Terraform foundation
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Resolve project name
+        id: project
+        env:
+          INPUT_NAME: ${{ inputs.project_name }}
+        run: |
+          if [ -n "$INPUT_NAME" ]; then
+            echo "name=$INPUT_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build StackPilot
+        run: cargo build --release
+
+      - name: Preview generated repository
+        run: |
+          ./target/release/stackpilot plan \
+            --non-interactive \
+            "${{ steps.project.outputs.name }}" \
+            --kind "${{ inputs.project_kind }}" \
+            --language "${{ inputs.language }}" \
+            --framework "${{ inputs.framework }}" \
+            --database "${{ inputs.database }}" \
+            --cloud "${{ inputs.cloud }}" \
+            --docker "${{ inputs.docker }}" \
+            --ci "${{ inputs.ci }}" \
+            --terraform "${{ inputs.terraform }}"
+
+      - name: Configure repository
+        run: |
+          ./target/release/stackpilot bootstrap \
+            --non-interactive \
+            --name "${{ steps.project.outputs.name }}" \
+            --kind "${{ inputs.project_kind }}" \
+            --language "${{ inputs.language }}" \
+            --framework "${{ inputs.framework }}" \
+            --database "${{ inputs.database }}" \
+            --cloud "${{ inputs.cloud }}" \
+            --docker "${{ inputs.docker }}" \
+            --ci "${{ inputs.ci }}" \
+            --terraform "${{ inputs.terraform }}"
+
+      - name: Commit generated foundation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: bootstrap project with StackPilot"
+          git push

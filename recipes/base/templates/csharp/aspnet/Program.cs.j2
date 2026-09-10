@@ -1,0 +1,10 @@
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "ok",
+    service = "{{ project_name }}"
+}));
+
+app.Run("http://0.0.0.0:3000");

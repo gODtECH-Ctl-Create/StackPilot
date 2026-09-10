@@ -1,0 +1,17 @@
+version = 1
+
+[project]
+name = "{{ project_name }}"
+kind = "{{ project_kind }}"
+language = "{{ language }}"
+framework = "{{ framework }}"
+database = "{{ database }}"
+cloud = "{{ cloud }}"
+
+[features]
+docker = {{ docker }}
+ci = {{ ci }}
+terraform = {{ terraform }}
+
+[stackpilot]
+recipe = "{{ recipe_name }}"

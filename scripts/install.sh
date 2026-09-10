@@ -1,0 +1,58 @@
+#!/usr/bin/env sh
+set -eu
+
+REPO="gODtECH-Ctl-Create/StackPilot"
+VERSION="${STACKPILOT_VERSION:-latest}"
+INSTALL_DIR="${STACKPILOT_INSTALL_DIR:-$HOME/.local/bin}"
+
+os_name="$(uname -s)"
+arch_name="$(uname -m)"
+
+case "$os_name" in
+  Linux) os="linux" ;;
+  Darwin) os="macos" ;;
+  *)
+    echo "StackPilot does not publish an installer binary for $os_name yet." >&2
+    exit 1
+    ;;
+esac
+
+case "$arch_name" in
+  x86_64|amd64) arch="x86_64" ;;
+  arm64|aarch64) arch="aarch64" ;;
+  *)
+    echo "Unsupported CPU architecture: $arch_name" >&2
+    exit 1
+    ;;
+esac
+
+if [ "$os" = "linux" ] && [ "$arch" = "aarch64" ]; then
+  echo "Linux arm64 binaries are not published yet. Build StackPilot from source instead." >&2
+  exit 1
+fi
+
+asset="stackpilot-${os}-${arch}.tar.gz"
+if [ "$VERSION" = "latest" ]; then
+  url="https://github.com/${REPO}/releases/latest/download/${asset}"
+else
+  case "$VERSION" in
+    v*) tag="$VERSION" ;;
+    *) tag="v$VERSION" ;;
+  esac
+  url="https://github.com/${REPO}/releases/download/${tag}/${asset}"
+fi
+
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT INT TERM
+
+printf 'Installing StackPilot (%s/%s) from %s\n' "$os" "$arch" "$VERSION"
+curl --fail --silent --show-error --location "$url" --output "$tmp_dir/$asset"
+tar -xzf "$tmp_dir/$asset" -C "$tmp_dir"
+mkdir -p "$INSTALL_DIR"
+install -m 0755 "$tmp_dir/stackpilot" "$INSTALL_DIR/stackpilot"
+
+printf 'Installed StackPilot to %s/stackpilot\n' "$INSTALL_DIR"
+case ":${PATH}:" in
+  *":${INSTALL_DIR}:"*) ;;
+  *) printf 'Add %s to PATH to run stackpilot from any directory.\n' "$INSTALL_DIR" ;;
+esac
