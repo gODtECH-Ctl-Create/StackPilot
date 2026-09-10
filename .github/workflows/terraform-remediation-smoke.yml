@@ -1,0 +1,81 @@
+name: Terraform remediation smoke
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'recipes/**'
+      - '.github/workflows/terraform-remediation-smoke.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'recipes/**'
+      - '.github/workflows/terraform-remediation-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-remediation:
+    name: terraform fix / ${{ matrix.cloud }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cloud: AWS
+            provider: aws
+          - cloud: Azure
+            provider: azurerm
+          - cloud: GCP
+            provider: google
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build StackPilot
+        run: cargo build --locked
+
+      - name: Preview Terraform remediation
+        run: |
+          repo="/tmp/stackpilot-terraform-${{ matrix.cloud }}"
+          rm -rf "$repo"
+          mkdir -p "$repo"
+          printf '# existing repository\n' > "$repo/README.md"
+
+          ./target/debug/stackpilot fix "$repo" --cloud '${{ matrix.cloud }}' > preview.txt
+          grep -q '^Mode: preview$' preview.txt
+          grep -q 'create infra/terraform/main.tf' preview.txt
+          grep -q 'create infra/terraform/variables.tf' preview.txt
+          grep -q 'create infra/terraform/README.md' preview.txt
+          test ! -e "$repo/infra/terraform/main.tf"
+
+      - name: Apply and inspect Terraform remediation
+        run: |
+          repo="/tmp/stackpilot-terraform-${{ matrix.cloud }}"
+
+          ./target/debug/stackpilot fix "$repo" --cloud '${{ matrix.cloud }}' --apply > apply.txt
+          test -f "$repo/infra/terraform/main.tf"
+          test -f "$repo/infra/terraform/variables.tf"
+          test -f "$repo/infra/terraform/README.md"
+          grep -q 'provider "${{ matrix.provider }}"' "$repo/infra/terraform/main.tf"
+          grep -q 'cloud = "${{ matrix.cloud }}"' "$repo/.stackpilot.toml"
+          grep -q 'terraform = true' "$repo/.stackpilot.toml"
+
+          ./target/debug/stackpilot inspect "$repo" > inspect.txt
+          grep -q 'Terraform' inspect.txt
+          grep -q 'Terraform configuration detected' inspect.txt
+
+      - name: Verify Terraform remediation is idempotent
+        run: |
+          repo="/tmp/stackpilot-terraform-${{ matrix.cloud }}"
+          ./target/debug/stackpilot fix "$repo" --cloud '${{ matrix.cloud }}' > second-preview.txt
+          if grep -q 'create infra/terraform/main.tf' second-preview.txt; then
+            echo 'Terraform remediation unexpectedly planned an existing foundation'
+            exit 1
+          fi
