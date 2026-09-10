@@ -29,6 +29,11 @@ jobs:
       - name: Test
         run: cargo test --all
 
+      - name: Validate installer syntax
+        run: |
+          bash -n scripts/install.sh
+          pwsh -NoProfile -Command '$null = [scriptblock]::Create((Get-Content -Raw scripts/install.ps1))'
+
       - name: Smoke test generic project creation
         run: |
           cargo run -- new ci-smoke --recipe base --non-interactive --no-git
