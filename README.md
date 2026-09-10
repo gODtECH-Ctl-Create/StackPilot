@@ -6,7 +6,7 @@
 
 <p>
   <a href="https://github.com/gODtECH-Ctl-Create/StackPilot/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/gODtECH-Ctl-Create/StackPilot/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI status" /></a>
-  <img src="https://img.shields.io/badge/version-0.1.1-8d91ff?style=for-the-badge" alt="StackPilot version 0.1.1" />
+  <img src="https://img.shields.io/badge/version-0.1.2-8d91ff?style=for-the-badge" alt="StackPilot version 0.1.2" />
   <img src="https://img.shields.io/badge/license-MIT-8bffb0?style=for-the-badge" alt="MIT license" />
   <img src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust&logoColor=white" alt="Rust core" />
   <img src="https://img.shields.io/badge/golden_paths-6-11172a?style=for-the-badge" alt="Six golden paths" />
@@ -255,7 +255,7 @@ Terraform            optional infrastructure foundation
 
 ## 📦 Installation
 
-StackPilot release tags use semantic versioning in the form **`vMAJOR.MINOR.PATCH`**. The release workflow publishes native binaries for **Linux x86_64, macOS Intel, macOS Apple Silicon, and Windows x86_64**, plus a `SHA256SUMS` file.
+StackPilot release tags use semantic versioning in the form **`vMAJOR.MINOR.PATCH`**. The release workflow publishes native binaries for **Linux x86_64, macOS Intel, macOS Apple Silicon, and Windows x86_64**, plus a `SHA256SUMS` file. Release archives also contain StackPilot's recipe library, and the installer places those recipes beside the executable so commands work from any directory.
 
 Linux / macOS installer:
 

@@ -60,7 +60,7 @@ Check the published release assets at:
 https://github.com/${REPO}/releases
 
 To install a specific release, set STACKPILOT_VERSION first, for example:
-STACKPILOT_VERSION=0.1.1
+STACKPILOT_VERSION=0.1.2
 EOF
   exit 1
 fi
@@ -74,11 +74,18 @@ if [ ! -f "$tmp_dir/stackpilot" ]; then
   echo "The downloaded archive did not contain the stackpilot binary. The release package may be invalid." >&2
   exit 1
 fi
+if [ ! -f "$tmp_dir/recipes/base/recipe.toml" ]; then
+  echo "The downloaded archive did not contain StackPilot recipes. The release package may be invalid." >&2
+  exit 1
+fi
 
 mkdir -p "$INSTALL_DIR"
 install -m 0755 "$tmp_dir/stackpilot" "$INSTALL_DIR/stackpilot"
+rm -rf "$INSTALL_DIR/recipes"
+cp -R "$tmp_dir/recipes" "$INSTALL_DIR/recipes"
 
 printf 'Installed StackPilot to %s/stackpilot\n' "$INSTALL_DIR"
+printf 'Installed recipes to %s/recipes\n' "$INSTALL_DIR"
 case ":${PATH}:" in
   *":${INSTALL_DIR}:"*) ;;
   *) printf 'Add %s to PATH to run stackpilot from any directory.\n' "$INSTALL_DIR" ;;

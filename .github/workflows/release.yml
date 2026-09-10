@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing release tag to build and publish (for example v0.1.1)'
+        description: 'Existing release tag to build and publish (for example v0.1.2)'
         required: true
         type: string
 
@@ -37,7 +37,7 @@ jobs:
 
           tag="$RELEASE_TAG"
           if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
-            echo "Release tags must use semantic version format, for example v0.1.1." >&2
+            echo "Release tags must use semantic version format, for example v0.1.2." >&2
             exit 1
           fi
 
@@ -95,7 +95,7 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Package Unix binary
+      - name: Package Unix binary and recipes
         if: runner.os != 'Windows'
         shell: bash
         run: |
@@ -103,9 +103,11 @@ jobs:
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/stackpilot" dist/stackpilot
           cp README.md LICENSE dist/
-          tar -C dist -czf "${{ matrix.asset }}.tar.gz" stackpilot README.md LICENSE
+          cp -R recipes dist/recipes
+          test -f dist/recipes/base/recipe.toml
+          tar -C dist -czf "${{ matrix.asset }}.tar.gz" stackpilot README.md LICENSE recipes
 
-      - name: Package Windows binary
+      - name: Package Windows binary and recipes
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -113,7 +115,11 @@ jobs:
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/stackpilot.exe" "dist/stackpilot.exe"
           Copy-Item README.md, LICENSE dist/
-          Compress-Archive -Path dist/stackpilot.exe,dist/README.md,dist/LICENSE -DestinationPath "${{ matrix.asset }}.zip"
+          Copy-Item recipes "dist/recipes" -Recurse
+          if (-not (Test-Path "dist/recipes/base/recipe.toml")) {
+            throw "Packaged recipes are missing base/recipe.toml"
+          }
+          Compress-Archive -Path dist/stackpilot.exe,dist/README.md,dist/LICENSE,dist/recipes -DestinationPath "${{ matrix.asset }}.zip"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
