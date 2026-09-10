@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">StackPilot v0.1.2 Windows installation verification</title>
+  <desc id="desc">Terminal-style proof graphic reproduced from a successful Windows PowerShell installation, doctor, recipes, plan and project generation run.</desc>
+  <rect width="1200" height="700" rx="28" fill="#080b14"/>
+  <rect x="24" y="24" width="1152" height="652" rx="22" fill="#0b1020" stroke="#283146" stroke-width="2"/>
+  <rect x="24" y="24" width="1152" height="58" rx="22" fill="#11182a"/>
+  <circle cx="58" cy="53" r="7" fill="#ff6b6b"/><circle cx="82" cy="53" r="7" fill="#ffd166"/><circle cx="106" cy="53" r="7" fill="#8bffb0"/>
+  <text x="600" y="59" text-anchor="middle" fill="#8d99b3" font-family="Consolas, Menlo, monospace" font-size="17">Windows PowerShell · verified v0.1.2</text>
+  <g font-family="Consolas, Menlo, monospace" font-size="21">
+    <text x="58" y="125" fill="#8bffb0">PS C:\Users\User&gt;</text><text x="275" y="125" fill="#dce4f8">stackpilot --version</text>
+    <text x="58" y="166" fill="#dce4f8">stackpilot 0.1.2</text>
+    <text x="58" y="214" fill="#8bffb0">PS C:\Users\User&gt;</text><text x="275" y="214" fill="#dce4f8">stackpilot doctor</text>
+    <text x="58" y="255" fill="#dce4f8">StackPilot doctor</text>
+    <text x="58" y="292" fill="#8bffb0">✓ Git available</text>
+    <text x="58" y="329" fill="#8bffb0">✓ 1 recipe(s) validated</text>
+    <text x="58" y="366" fill="#8bffb0">✓ recipe directory: ...\StackPilot\recipes</text>
+    <text x="58" y="414" fill="#8bffb0">PS C:\Users\User&gt;</text><text x="275" y="414" fill="#dce4f8">stackpilot recipes</text>
+    <text x="58" y="455" fill="#dce4f8">base - Opinionated production-ready golden paths across major application ecosystems</text>
+    <text x="58" y="503" fill="#8bffb0">PS C:\Users\User&gt;</text><text x="275" y="503" fill="#dce4f8">stackpilot plan smoke-test --recipe base --non-interactive</text>
+    <text x="58" y="544" fill="#dce4f8">StackPilot plan for smoke-test (base)</text>
+    <text x="58" y="581" fill="#8bffb0">+ README.md  + .stackpilot.toml  + Docker/CI/Terraform foundations</text>
+    <text x="58" y="629" fill="#8bffb0">✓ Real project generation verified from a normal user directory</text>
+  </g>
+</svg>

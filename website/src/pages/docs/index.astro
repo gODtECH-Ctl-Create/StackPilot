@@ -1,12 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { currentTag } from '../../data/site';
 const base = import.meta.env.BASE_URL;
 const href = (path = '') => `${base}${path}`;
 ---
-<Layout current="docs" title="Documentation — StackPilot">
+<Layout current="docs" title={`Documentation ${currentTag} — StackPilot`}>
   <section class="page-hero">
     <div class="shell">
-      <div class="section-kicker">Documentation</div>
+      <div class="section-kicker">Documentation · {currentTag}</div>
       <h1>Build from the golden path.</h1>
       <p>StackPilot is intentionally small at the surface. You choose the service language and deployment profile; StackPilot supplies tested engineering defaults.</p>
     </div>
@@ -55,11 +56,11 @@ stackpilot new orders-api \
       <div class="note">You can also run <strong>Configure StackPilot Template</strong> from the repository's GitHub Actions tab instead of bootstrapping locally.</div>
 
       <h2 id="doctor"><code>stackpilot doctor</code></h2>
-      <p>Validates the local StackPilot environment and recipe directory.</p>
+      <p>Validates the local StackPilot environment and recipe directory. Installed releases automatically resolve the bundled recipe library beside the StackPilot executable.</p>
       <div class="code-block"><button class="copy-button" data-copy="doctor-code">Copy</button><pre id="doctor-code"><code>stackpilot doctor</code></pre></div>
 
       <h2 id="recipes"><code>stackpilot recipes</code></h2>
-      <p>Lists the recipes available to the StackPilot engine. V0.1 ships around the <code>base</code> recipe, with conditional files implementing the six blessed backend paths.</p>
+      <p>{currentTag} ships around the <code>base</code> recipe, with conditional files implementing the six blessed backend paths.</p>
       <div class="code-block"><button class="copy-button" data-copy="recipes-code">Copy</button><pre id="recipes-code"><code>stackpilot recipes</code></pre></div>
 
       <h2 id="profile">Project profile</h2>
@@ -75,7 +76,7 @@ ci = true
 terraform = true</code></pre></div>
 
       <h2>What StackPilot does not do yet</h2>
-      <p>V0.1 focuses on backend services. Frontend applications, full-stack applications, workers, CLI applications, libraries, repository remediation and hosted organization policies are later phases—not half-supported switches in the first release.</p>
+      <p>{currentTag} remains focused on backend services. Frontend applications, full-stack applications, workers, CLI applications, libraries, repository remediation and hosted organization policies are later phases—not half-supported switches in the current release.</p>
     </article>
   </div>
 </Layout>
