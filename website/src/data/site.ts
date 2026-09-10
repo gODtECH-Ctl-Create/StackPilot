@@ -63,8 +63,7 @@ const cargoPath = cargoCandidates.find(existsSync);
 
 if (cargoPath) {
   const cargoToml = readFileSync(cargoPath, 'utf8');
-  const packageSection = cargoToml.match(/^\[package\][\s\S]*?(?=^\[|\z)/m)?.[0] ?? cargoToml;
-  const cargoVersion = packageSection.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
+  const cargoVersion = cargoToml.match(/^\[package\][\s\S]*?^version\s*=\s*"([^"]+)"/m)?.[1];
 
   if (cargoVersion && cargoVersion !== site.currentVersion) {
     throw new Error(
