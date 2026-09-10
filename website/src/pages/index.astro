@@ -1,16 +1,18 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { currentTag, latestReleaseUrl, site } from '../data/site';
 const base = import.meta.env.BASE_URL;
 const href = (path = '') => `${base}${path}`;
 ---
 <Layout current="home">
   <section class="hero">
     <div class="shell">
-      <div class="eyebrow"><span class="eyebrow-dot"></span> Opinionated backend scaffolding</div>
+      <div class="eyebrow"><span class="eyebrow-dot"></span> Current stable release · {currentTag}</div>
       <h1><span class="gradient-text">Start production-ready.</span><br />Not from scratch.</h1>
       <p class="hero-copy">Choose your language. StackPilot chooses the production-minded path — framework, Docker, CI, Terraform, health checks, database and cloud foundations included.</p>
       <div class="hero-actions">
         <a class="button button-primary" href={href('install/')}>Install StackPilot →</a>
+        <a class="button" href={latestReleaseUrl} target="_blank" rel="noreferrer">View {currentTag} release ↗</a>
         <a class="button" href={href('docs/')}>Read the docs</a>
       </div>
 
@@ -34,11 +36,30 @@ const href = (path = '') => `${base}${path}`;
     </div>
   </section>
 
+  <section class="section">
+    <div class="shell">
+      <div class="section-head">
+        <div class="section-kicker">Verified progress</div>
+        <h2>Built, tested and installable.</h2>
+        <p class="section-lead">These are product facts we can verify today—not projected adoption numbers. StackPilot will add public usage metrics when there is enough real data to make them meaningful.</p>
+      </div>
+      <div class="grid grid-2">
+        {site.proofPoints.map((point) => (
+          <div class="card">
+            <span class="card-label">{point.label.toUpperCase()}</span>
+            <h3 style="font-size:30px;margin-top:12px">{point.value}</h3>
+            <p>{point.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="install">
     <div class="narrow">
-      <div class="section-kicker">Install</div>
+      <div class="section-kicker">Install · {currentTag}</div>
       <h2>One command. Then build.</h2>
-      <p class="section-lead">The installer pulls the latest StackPilot binary for your platform. No Rust toolchain required.</p>
+      <p class="section-lead">The installer pulls the latest StackPilot binary and bundled recipe library for your platform. No Rust toolchain required.</p>
       <div class="install-strip">
         <code id="home-install">curl -fsSL https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.sh | bash</code>
         <button class="copy-button" data-copy="home-install">Copy</button>
@@ -80,6 +101,26 @@ const href = (path = '') => `${base}${path}`;
         <div class="card"><span class="card-label">05 / Operability</span><h3>Health endpoint</h3><p>A common <code>/health</code> contract on port <code>3000</code> across every golden path.</p></div>
         <div class="card"><span class="card-label">06 / Repository</span><h3>Engineering hygiene</h3><p>Documentation, environment conventions, PR guidance and a persistent StackPilot profile.</p></div>
       </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="shell">
+      <div class="section-head">
+        <div class="section-kicker">Release journey</div>
+        <h2>Each release makes the first mile stronger.</h2>
+        <p class="section-lead">We keep the public history concise: what capability each release established and how it moved StackPilot closer to a dependable developer tool.</p>
+      </div>
+      <div class="grid grid-3">
+        {site.releases.map((release) => (
+          <div class="card">
+            <span class="card-label">{release.version}</span>
+            <h3>{release.title}</h3>
+            <p>{release.summary}</p>
+          </div>
+        ))}
+      </div>
+      <p style="color:var(--muted);font-size:13px;margin:18px 0 0">Latest verified milestone: <strong style="color:var(--text)">{currentTag}</strong>, released {site.releaseDate}. Full release assets and notes are available on GitHub.</p>
     </div>
   </section>
 
