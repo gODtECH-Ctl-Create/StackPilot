@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">StackPilot GitHub Actions CI verification</title>
+  <desc id="desc">Workflow-style proof graphic based on successful GitHub Actions CI run 80, including engine, website and six golden path jobs.</desc>
+  <rect width="1200" height="700" rx="28" fill="#080b14"/>
+  <rect x="24" y="24" width="1152" height="652" rx="22" fill="#0b1020" stroke="#283146" stroke-width="2"/>
+  <rect x="24" y="24" width="1152" height="72" rx="22" fill="#11182a"/>
+  <text x="58" y="58" fill="#f4f7ff" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700">GitHub Actions · CI #80</text>
+  <text x="58" y="82" fill="#8d99b3" font-family="Consolas, Menlo, monospace" font-size="15">fix/install-recipes · completed successfully</text>
+  <g font-family="Inter, Arial, sans-serif" font-size="22">
+    <text x="68" y="150" fill="#8bffb0">✓</text><text x="108" y="150" fill="#dce4f8">engine</text><text x="1030" y="150" fill="#8bffb0">passed</text>
+    <text x="68" y="208" fill="#8bffb0">✓</text><text x="108" y="208" fill="#dce4f8">website / Astro</text><text x="1030" y="208" fill="#8bffb0">passed</text>
+    <text x="68" y="266" fill="#8bffb0">✓</text><text x="108" y="266" fill="#dce4f8">golden / Rust</text><text x="1030" y="266" fill="#8bffb0">passed</text>
+    <text x="68" y="324" fill="#8bffb0">✓</text><text x="108" y="324" fill="#dce4f8">golden / Go</text><text x="1030" y="324" fill="#8bffb0">passed</text>
+    <text x="68" y="382" fill="#8bffb0">✓</text><text x="108" y="382" fill="#dce4f8">golden / TypeScript</text><text x="1030" y="382" fill="#8bffb0">passed</text>
+    <text x="68" y="440" fill="#8bffb0">✓</text><text x="108" y="440" fill="#dce4f8">golden / Python</text><text x="1030" y="440" fill="#8bffb0">passed</text>
+    <text x="68" y="498" fill="#8bffb0">✓</text><text x="108" y="498" fill="#dce4f8">golden / Java</text><text x="1030" y="498" fill="#8bffb0">passed</text>
+    <text x="68" y="556" fill="#8bffb0">✓</text><text x="108" y="556" fill="#dce4f8">golden / C#</text><text x="1030" y="556" fill="#8bffb0">passed</text>
+  </g>
+  <line x1="58" y1="592" x2="1142" y2="592" stroke="#283146"/>
+  <text x="58" y="635" fill="#8bffb0" font-family="Consolas, Menlo, monospace" font-size="19">✓ 8/8 CI jobs green · installed recipe resolution regression test included</text>
+</svg>
