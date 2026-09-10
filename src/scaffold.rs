@@ -145,7 +145,18 @@ mod tests {
 
     #[test]
     fn evaluates_boolean_and_value_conditions() {
-        let spec = ProjectSpec::minimal("payments".to_string()).expect("valid project spec");
+        let spec = ProjectSpec::configured(
+            "payments".to_string(),
+            "Generic".to_string(),
+            "Generic".to_string(),
+            "None".to_string(),
+            "None".to_string(),
+            "None".to_string(),
+            false,
+            false,
+            false,
+        )
+        .expect("valid project spec");
         assert!(!matches_condition("docker", &spec).expect("condition should evaluate"));
         assert!(matches_condition("language=Generic", &spec).expect("condition should evaluate"));
     }
