@@ -29,11 +29,33 @@ jobs:
       - name: Test
         run: cargo test --all
 
-      - name: Smoke test project creation
+      - name: Smoke test generic project creation
         run: |
           cargo run -- new ci-smoke --recipe base --non-interactive --no-git
           test -f ci-smoke/.stackpilot.toml
           test -f ci-smoke/docs/architecture.md
+
+      - name: Smoke test Rust Axum golden path
+        run: |
+          cargo run -- new axum-smoke \
+            --recipe base \
+            --non-interactive \
+            --kind "Backend API" \
+            --language Rust \
+            --framework Axum \
+            --database PostgreSQL \
+            --cloud AWS \
+            --docker true \
+            --ci true \
+            --terraform true \
+            --no-git
+          test -f axum-smoke/Cargo.toml
+          test -f axum-smoke/src/main.rs
+          test -f axum-smoke/Dockerfile
+          test -f axum-smoke/compose.yaml
+          test -f axum-smoke/.github/workflows/ci.yml
+          test -f axum-smoke/infra/terraform/main.tf
+          cargo check --manifest-path axum-smoke/Cargo.toml
 
       - name: Build CLI
         run: cargo build
