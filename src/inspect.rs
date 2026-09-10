@@ -28,16 +28,6 @@ pub enum FindingStatus {
     Missing,
 }
 
-impl FindingStatus {
-    fn symbol(self) -> &'static str {
-        match self {
-            Self::Passed => "✓",
-            Self::Warning => "!",
-            Self::Missing => "✗",
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Finding {
     pub category: &'static str,
@@ -60,12 +50,6 @@ impl InspectionReport {
     fn finding(&self, name: &str) -> Option<&Finding> {
         self.findings.iter().find(|finding| finding.name == name)
     }
-}
-
-pub fn run(root: &Path) -> Result<()> {
-    let report = inspect_repository(root)?;
-    print_report(&report);
-    Ok(())
 }
 
 pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
@@ -221,62 +205,6 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
         frameworks,
         findings,
     })
-}
-
-fn print_report(report: &InspectionReport) {
-    println!("StackPilot inspect");
-    println!("Repository: {}", report.root.display());
-    println!(
-        "Languages: {}",
-        if report.languages.is_empty() {
-            "not detected".to_string()
-        } else {
-            report.languages.join(", ")
-        }
-    );
-    println!(
-        "Frameworks: {}",
-        if report.frameworks.is_empty() {
-            "not detected".to_string()
-        } else {
-            report.frameworks.join(", ")
-        }
-    );
-
-    for category in ["Runtime", "Delivery", "Infrastructure", "Configuration"] {
-        println!("\n{category}");
-        for finding in report
-            .findings
-            .iter()
-            .filter(|finding| finding.category == category)
-        {
-            println!(
-                "{} {} — {}",
-                finding.status.symbol(),
-                finding.name,
-                finding.detail
-            );
-        }
-    }
-
-    let recommendations: Vec<&str> = report
-        .findings
-        .iter()
-        .filter_map(|finding| finding.recommendation.as_deref())
-        .collect();
-
-    if recommendations.is_empty() {
-        println!("\nProduction gaps: none detected by the current inspection rules");
-    } else {
-        println!("\nProduction gaps: {}", recommendations.len());
-        for recommendation in recommendations {
-            println!("  - {recommendation}");
-        }
-    }
-
-    println!(
-        "\nReadiness scoring is not enabled yet; this report is deterministic and informational."
-    );
 }
 
 #[derive(Debug)]
