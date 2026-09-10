@@ -178,11 +178,7 @@ fn main() -> Result<()> {
                 git::init_repository(&destination)?;
             }
 
-            println!(
-                "Created {} at {}",
-                project_spec.name,
-                destination.display()
-            );
+            println!("Created {} at {}", project_spec.name, destination.display());
             println!("Recipe: {recipe}");
             println!(
                 "Stack: {} / {} / {}",
