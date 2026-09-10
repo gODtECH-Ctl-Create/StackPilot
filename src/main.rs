@@ -1,5 +1,6 @@
 mod bootstrap;
 mod doctor;
+mod fix;
 mod git;
 mod inspect;
 mod readiness;
@@ -172,6 +173,17 @@ enum Commands {
         fail_below: Option<u8>,
     },
 
+    /// Preview or apply safe deterministic fixes to an existing repository.
+    Fix {
+        /// Repository directory to remediate. Defaults to the current directory.
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Write the planned safe changes. Without this flag, fix is a dry-run preview.
+        #[arg(long)]
+        apply: bool,
+    },
+
     /// List available StackPilot recipes.
     Recipes {
         /// Directory that contains StackPilot recipes.
@@ -253,6 +265,9 @@ fn main() -> Result<()> {
         }
         Commands::Inspect { path, fail_below } => {
             readiness::run(&path, fail_below)?;
+        }
+        Commands::Fix { path, apply } => {
+            fix::run(&path, apply)?;
         }
         Commands::Recipes { recipes_dir } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
