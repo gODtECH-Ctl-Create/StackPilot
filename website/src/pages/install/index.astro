@@ -1,0 +1,45 @@
+---
+import Layout from '../../layouts/Layout.astro';
+const base = import.meta.env.BASE_URL;
+const href = (path = '') => `${base}${path}`;
+---
+<Layout current="install" title="Install StackPilot — StackPilot">
+  <section class="page-hero">
+    <div class="shell">
+      <div class="section-kicker">Installation</div>
+      <h1>Install StackPilot.</h1>
+      <p>Use the release installer for the simplest setup, or install from source while the first public release is being finalized.</p>
+    </div>
+  </section>
+
+  <div class="shell docs-layout">
+    <aside class="docs-nav">
+      <a class="active" href="#unix">macOS / Linux</a>
+      <a href="#windows">Windows</a>
+      <a href="#source">From source</a>
+      <a href="#verify">Verify</a>
+      <a href={href('docs/')}>CLI docs →</a>
+    </aside>
+    <article class="doc">
+      <h2 id="unix">macOS & Linux</h2>
+      <p>The install script detects your OS and architecture, downloads the latest GitHub release, and installs <code>stackpilot</code> into <code>~/.local/bin</code>.</p>
+      <div class="code-block"><button class="copy-button" data-copy="unix-code">Copy</button><pre id="unix-code"><code>curl -fsSL https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.sh | bash</code></pre></div>
+      <div class="note">The release installer requires a published StackPilot release. If <code>v0.1.0</code> has not been published yet, use the source installation below.</div>
+
+      <h2 id="windows">Windows PowerShell</h2>
+      <p>Run PowerShell as your normal user. The installer downloads the Windows binary, installs it into your user profile and updates your user PATH.</p>
+      <div class="code-block"><button class="copy-button" data-copy="win-code">Copy</button><pre id="win-code"><code>irm https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.ps1 | iex</code></pre></div>
+
+      <h2 id="source">Install from source</h2>
+      <p>If you already have a Rust toolchain, Cargo can install StackPilot directly from the repository.</p>
+      <div class="code-block"><button class="copy-button" data-copy="source-code">Copy</button><pre id="source-code"><code>cargo install --git https://github.com/gODtECH-Ctl-Create/StackPilot.git</code></pre></div>
+
+      <h2 id="verify">Verify the installation</h2>
+      <div class="code-block"><button class="copy-button" data-copy="verify-code">Copy</button><pre id="verify-code"><code>stackpilot --version
+stackpilot doctor</code></pre></div>
+      <p>Then create your first backend service:</p>
+      <div class="code-block"><button class="copy-button" data-copy="first-code">Copy</button><pre id="first-code"><code>stackpilot new my-service --language Rust</code></pre></div>
+      <p><a href={href('docs/')}>Continue to the CLI guide →</a></p>
+    </article>
+  </div>
+</Layout>
