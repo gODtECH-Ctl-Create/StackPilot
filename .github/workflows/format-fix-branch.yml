@@ -1,0 +1,38 @@
+name: Format repository fix branch
+
+on:
+  push:
+    branches: [feat/repository-fix]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: feat/repository-fix
+
+      - name: Install Rustfmt
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Format Rust source
+        run: cargo fmt --all
+
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet; then
+            echo 'Already formatted'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src
+          git commit -m 'style: apply rustfmt to repository fix'
+          git push origin HEAD:feat/repository-fix
