@@ -1,5 +1,5 @@
 name = "base"
-description = "Language-agnostic production-minded repository foundation"
+description = "Language-aware production-minded repository foundation"
 
 [[files]]
 template = "README.md.j2"
@@ -36,3 +36,50 @@ destination = "docs/architecture.md"
 [[files]]
 template = "PULL_REQUEST_TEMPLATE.md.j2"
 destination = ".github/PULL_REQUEST_TEMPLATE.md"
+
+# Rust + Axum golden path
+[[files]]
+template = "rust/axum/Cargo.toml.j2"
+destination = "Cargo.toml"
+when = "language=Rust && framework=Axum"
+
+[[files]]
+template = "rust/axum/main.rs.j2"
+destination = "src/main.rs"
+when = "language=Rust && framework=Axum"
+
+[[files]]
+template = "rust/axum/Dockerfile.j2"
+destination = "Dockerfile"
+when = "language=Rust && framework=Axum && docker"
+
+[[files]]
+template = "rust/axum/dockerignore.j2"
+destination = ".dockerignore"
+when = "language=Rust && framework=Axum && docker"
+
+[[files]]
+template = "rust/axum/compose.yaml.j2"
+destination = "compose.yaml"
+when = "language=Rust && framework=Axum && docker"
+
+[[files]]
+template = "rust/axum/ci.yml.j2"
+destination = ".github/workflows/ci.yml"
+when = "language=Rust && framework=Axum && ci"
+
+# Cloud-agnostic Terraform entry point selected by cloud profile
+[[files]]
+template = "terraform/main.tf.j2"
+destination = "infra/terraform/main.tf"
+when = "terraform"
+
+[[files]]
+template = "terraform/variables.tf.j2"
+destination = "infra/terraform/variables.tf"
+when = "terraform"
+
+[[files]]
+template = "terraform/README.md.j2"
+destination = "infra/terraform/README.md"
+when = "terraform"

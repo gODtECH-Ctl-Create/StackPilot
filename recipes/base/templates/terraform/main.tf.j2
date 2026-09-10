@@ -1,0 +1,27 @@
+terraform {
+  required_version = ">= 1.8.0"
+
+  required_providers {
+{% if cloud == "AWS" %}    aws = {
+      source = "hashicorp/aws"
+    }
+{% elif cloud == "Azure" %}    azurerm = {
+      source = "hashicorp/azurerm"
+    }
+{% elif cloud == "GCP" %}    google = {
+      source = "hashicorp/google"
+    }
+{% endif %}  }
+}
+
+{% if cloud == "AWS" %}provider "aws" {
+  region = var.region
+}
+{% elif cloud == "Azure" %}provider "azurerm" {
+  features {}
+}
+{% elif cloud == "GCP" %}provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+{% endif %}

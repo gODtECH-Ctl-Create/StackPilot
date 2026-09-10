@@ -91,25 +91,37 @@ fn render_files(
 }
 
 fn matches_condition(condition: &str, spec: &ProjectSpec) -> Result<bool> {
-    match condition {
+    for clause in condition.split("&&") {
+        if !matches_clause(clause.trim(), spec)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn matches_clause(clause: &str, spec: &ProjectSpec) -> Result<bool> {
+    match clause {
         "docker" => Ok(spec.docker),
         "ci" => Ok(spec.ci),
         "terraform" => Ok(spec.terraform),
+        "!docker" => Ok(!spec.docker),
+        "!ci" => Ok(!spec.ci),
+        "!terraform" => Ok(!spec.terraform),
         _ => {
-            let Some((key, expected)) = condition.split_once('=') else {
-                bail!("unsupported recipe condition: {condition}");
+            let Some((key, expected)) = clause.split_once('=') else {
+                bail!("unsupported recipe condition: {clause}");
             };
 
-            let actual = match key {
+            let actual = match key.trim() {
                 "kind" => &spec.kind,
                 "language" => &spec.language,
                 "framework" => &spec.framework,
                 "database" => &spec.database,
                 "cloud" => &spec.cloud,
-                _ => bail!("unsupported recipe condition key: {key}"),
+                _ => bail!("unsupported recipe condition key: {}", key.trim()),
             };
 
-            Ok(actual.eq_ignore_ascii_case(expected))
+            Ok(actual.eq_ignore_ascii_case(expected.trim()))
         }
     }
 }
@@ -136,5 +148,30 @@ mod tests {
         let spec = ProjectSpec::minimal("payments".to_string()).expect("valid project spec");
         assert!(!matches_condition("docker", &spec).expect("condition should evaluate"));
         assert!(matches_condition("language=Generic", &spec).expect("condition should evaluate"));
+    }
+
+    #[test]
+    fn evaluates_compound_conditions() {
+        let spec = ProjectSpec::configured(
+            "payments".to_string(),
+            "Backend API".to_string(),
+            "Rust".to_string(),
+            "Axum".to_string(),
+            "PostgreSQL".to_string(),
+            "AWS".to_string(),
+            true,
+            true,
+            true,
+        )
+        .expect("valid project spec");
+
+        assert!(
+            matches_condition("language=Rust && framework=Axum && docker", &spec)
+                .expect("condition should evaluate")
+        );
+        assert!(
+            !matches_condition("language=Rust && framework=Actix Web", &spec)
+                .expect("condition should evaluate")
+        );
     }
 }

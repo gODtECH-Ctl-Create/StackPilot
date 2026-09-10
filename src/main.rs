@@ -8,7 +8,7 @@ mod spec;
 use std::{env, path::PathBuf};
 
 use anyhow::{Context, Result};
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand};
 
 use recipe::Recipe;
 use spec::ProjectSpec;
@@ -22,6 +22,57 @@ use spec::ProjectSpec;
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+}
+
+#[derive(Debug, Args)]
+struct SpecOptions {
+    /// Project type used with --non-interactive.
+    #[arg(long, default_value = "Generic")]
+    kind: String,
+
+    /// Programming language used with --non-interactive.
+    #[arg(long, default_value = "Generic")]
+    language: String,
+
+    /// Framework used with --non-interactive.
+    #[arg(long, default_value = "None")]
+    framework: String,
+
+    /// Database used with --non-interactive.
+    #[arg(long, default_value = "None")]
+    database: String,
+
+    /// Cloud used with --non-interactive.
+    #[arg(long, default_value = "None")]
+    cloud: String,
+
+    /// Include container support with --non-interactive.
+    #[arg(long, default_value_t = false, action = ArgAction::Set)]
+    docker: bool,
+
+    /// Include CI support with --non-interactive.
+    #[arg(long, default_value_t = false, action = ArgAction::Set)]
+    ci: bool,
+
+    /// Include Terraform support with --non-interactive.
+    #[arg(long, default_value_t = false, action = ArgAction::Set)]
+    terraform: bool,
+}
+
+impl SpecOptions {
+    fn into_project_spec(self, name: String) -> Result<ProjectSpec> {
+        ProjectSpec::configured(
+            name,
+            self.kind,
+            self.language,
+            self.framework,
+            self.database,
+            self.cloud,
+            self.docker,
+            self.ci,
+            self.terraform,
+        )
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -43,9 +94,12 @@ enum Commands {
         #[arg(short, long, default_value = ".")]
         output: PathBuf,
 
-        /// Disable interactive prompts and use safe generic defaults.
+        /// Disable interactive prompts and use values supplied by flags.
         #[arg(long)]
         non_interactive: bool,
+
+        #[command(flatten)]
+        spec: SpecOptions,
 
         /// Do not initialize a Git repository in the generated project.
         #[arg(long)]
@@ -70,37 +124,8 @@ enum Commands {
         #[arg(long)]
         non_interactive: bool,
 
-        /// Project type used with --non-interactive.
-        #[arg(long, default_value = "Generic")]
-        kind: String,
-
-        /// Programming language used with --non-interactive.
-        #[arg(long, default_value = "Generic")]
-        language: String,
-
-        /// Framework used with --non-interactive.
-        #[arg(long, default_value = "None")]
-        framework: String,
-
-        /// Database used with --non-interactive.
-        #[arg(long, default_value = "None")]
-        database: String,
-
-        /// Cloud used with --non-interactive.
-        #[arg(long, default_value = "None")]
-        cloud: String,
-
-        /// Include container support with --non-interactive.
-        #[arg(long, default_value_t = false, action = ArgAction::Set)]
-        docker: bool,
-
-        /// Include CI support with --non-interactive.
-        #[arg(long, default_value_t = false, action = ArgAction::Set)]
-        ci: bool,
-
-        /// Include Terraform support with --non-interactive.
-        #[arg(long, default_value_t = false, action = ArgAction::Set)]
-        terraform: bool,
+        #[command(flatten)]
+        spec: SpecOptions,
 
         /// Preserve the StackPilot engine files after bootstrapping.
         #[arg(long)]
@@ -136,26 +161,32 @@ fn main() -> Result<()> {
             recipes_dir,
             output,
             non_interactive,
+            spec,
             no_git,
         } => {
-            let spec = if non_interactive {
+            let project_spec = if non_interactive {
                 let name = name.context("--non-interactive requires a project name")?;
-                ProjectSpec::minimal(name)?
+                spec.into_project_spec(name)?
             } else {
                 ProjectSpec::interactive(name)?
             };
 
-            let destination = scaffold::create_project(&spec, &recipe, &recipes_dir, &output)?;
+            let destination =
+                scaffold::create_project(&project_spec, &recipe, &recipes_dir, &output)?;
 
             if !no_git {
                 git::init_repository(&destination)?;
             }
 
-            println!("Created {} at {}", spec.name, destination.display());
+            println!(
+                "Created {} at {}",
+                project_spec.name,
+                destination.display()
+            );
             println!("Recipe: {recipe}");
             println!(
                 "Stack: {} / {} / {}",
-                spec.language, spec.framework, spec.database
+                project_spec.language, project_spec.framework, project_spec.database
             );
         }
         Commands::Bootstrap {
@@ -163,27 +194,18 @@ fn main() -> Result<()> {
             recipe,
             recipes_dir,
             non_interactive,
-            kind,
-            language,
-            framework,
-            database,
-            cloud,
-            docker,
-            ci,
-            terraform,
+            spec,
             keep_engine,
             force,
         } => {
             let name = name.unwrap_or(current_repository_name()?);
-            let spec = if non_interactive {
-                ProjectSpec::configured(
-                    name, kind, language, framework, database, cloud, docker, ci, terraform,
-                )?
+            let project_spec = if non_interactive {
+                spec.into_project_spec(name)?
             } else {
                 ProjectSpec::interactive(Some(name))?
             };
 
-            bootstrap::run(&spec, &recipe, &recipes_dir, keep_engine, force)?;
+            bootstrap::run(&project_spec, &recipe, &recipes_dir, keep_engine, force)?;
         }
         Commands::Recipes { recipes_dir } => {
             let recipes = Recipe::discover(&recipes_dir)?;

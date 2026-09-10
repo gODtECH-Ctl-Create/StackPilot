@@ -1,0 +1,21 @@
+{% if cloud == "AWS" %}variable "region" {
+  description = "AWS region for {{ project_name }}"
+  type        = string
+  default     = "us-east-1"
+}
+{% elif cloud == "Azure" %}variable "location" {
+  description = "Azure location for {{ project_name }}"
+  type        = string
+  default     = "eastus"
+}
+{% elif cloud == "GCP" %}variable "project_id" {
+  description = "GCP project ID for {{ project_name }}"
+  type        = string
+}
+
+variable "region" {
+  description = "GCP region for {{ project_name }}"
+  type        = string
+  default     = "us-central1"
+}
+{% endif %}
