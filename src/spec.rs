@@ -95,12 +95,28 @@ impl ProjectSpec {
         validate_choice(
             "project type",
             &kind,
-            &["Backend API", "Worker", "Full Stack", "Frontend", "CLI", "Library", "Generic"],
+            &[
+                "Backend API",
+                "Worker",
+                "Full Stack",
+                "Frontend",
+                "CLI",
+                "Library",
+                "Generic",
+            ],
         )?;
         validate_choice(
             "language",
             &language,
-            &["Rust", "Go", "TypeScript", "Python", "Java", "C#", "Generic"],
+            &[
+                "Rust",
+                "Go",
+                "TypeScript",
+                "Python",
+                "Java",
+                "C#",
+                "Generic",
+            ],
         )?;
         validate_choice(
             "database",
@@ -197,7 +213,10 @@ fn validate_choice(label: &str, value: &str, allowed: &[&str]) -> Result<()> {
         .iter()
         .any(|candidate| candidate.eq_ignore_ascii_case(value))
     {
-        bail!("unsupported {label} '{value}'; choose one of: {}", allowed.join(", "));
+        bail!(
+            "unsupported {label} '{value}'; choose one of: {}",
+            allowed.join(", ")
+        );
     }
     Ok(())
 }
