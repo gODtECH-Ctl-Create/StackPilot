@@ -6,7 +6,7 @@
 
 <p>
   <a href="https://github.com/gODtECH-Ctl-Create/StackPilot/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/gODtECH-Ctl-Create/StackPilot/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI status" /></a>
-  <img src="https://img.shields.io/badge/version-0.1.0-8d91ff?style=for-the-badge" alt="StackPilot version 0.1.0" />
+  <img src="https://img.shields.io/badge/version-0.1.1-8d91ff?style=for-the-badge" alt="StackPilot version 0.1.1" />
   <img src="https://img.shields.io/badge/license-MIT-8bffb0?style=for-the-badge" alt="MIT license" />
   <img src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust&logoColor=white" alt="Rust core" />
   <img src="https://img.shields.io/badge/golden_paths-6-11172a?style=for-the-badge" alt="Six golden paths" />
@@ -255,7 +255,7 @@ Terraform            optional infrastructure foundation
 
 ## 📦 Installation
 
-Tagged releases are configured to publish native binaries for **Linux x86_64, macOS Intel, macOS Apple Silicon, and Windows x86_64**.
+StackPilot release tags use semantic versioning in the form **`vMAJOR.MINOR.PATCH`**. The release workflow publishes native binaries for **Linux x86_64, macOS Intel, macOS Apple Silicon, and Windows x86_64**, plus a `SHA256SUMS` file.
 
 Linux / macOS installer:
 
@@ -276,6 +276,8 @@ git clone https://github.com/gODtECH-Ctl-Create/StackPilot.git
 cd StackPilot
 cargo run -- --help
 ```
+
+Maintainers should follow the release checklist in [`docs/releasing.md`](./docs/releasing.md). A release should not be announced as installable until all expected platform archives and `SHA256SUMS` are present on the GitHub release.
 
 ---
 
