@@ -43,19 +43,29 @@ Check the published release assets at:
 https://github.com/$Repo/releases
 
 To install a specific release, set STACKPILOT_VERSION first, for example:
-`$env:STACKPILOT_VERSION = "0.1.1"
+`$env:STACKPILOT_VERSION = "0.1.2"
 "@
     }
 
     Expand-Archive -Path $Archive -DestinationPath $TempDir -Force
 
     $ExtractedBinary = Join-Path $TempDir "stackpilot.exe"
-    if (-not (Test-Path $ExtractedBinary)) {
+    $ExtractedRecipes = Join-Path $TempDir "recipes"
+    if (-not (Test-Path $ExtractedBinary -PathType Leaf)) {
         throw "The downloaded archive did not contain stackpilot.exe. The release package may be invalid."
+    }
+    if (-not (Test-Path (Join-Path $ExtractedRecipes "base\recipe.toml") -PathType Leaf)) {
+        throw "The downloaded archive did not contain StackPilot recipes. The release package may be invalid."
     }
 
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
     Copy-Item $ExtractedBinary (Join-Path $InstallDir "stackpilot.exe") -Force
+
+    $InstalledRecipes = Join-Path $InstallDir "recipes"
+    if (Test-Path $InstalledRecipes) {
+        Remove-Item -Recurse -Force $InstalledRecipes
+    }
+    Copy-Item $ExtractedRecipes $InstalledRecipes -Recurse -Force
 
     $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $PathEntries = if ($UserPath) { $UserPath -split ';' } else { @() }
@@ -70,7 +80,8 @@ To install a specific release, set STACKPILOT_VERSION first, for example:
     }
 
     Write-Host "Installed StackPilot to $InstallDir\stackpilot.exe"
-    Write-Host "Run 'stackpilot --help' in this PowerShell session."
+    Write-Host "Installed recipes to $InstalledRecipes"
+    Write-Host "Run 'stackpilot doctor' in this PowerShell session."
 }
 finally {
     Remove-Item -Recurse -Force $TempDir -ErrorAction SilentlyContinue
