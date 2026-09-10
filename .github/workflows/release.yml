@@ -4,13 +4,61 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build and publish (for example v0.1.1)'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
+  validate:
+    name: validate release metadata
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Validate tag and package version
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="$RELEASE_TAG"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tags must use semantic version format, for example v0.1.1." >&2
+            exit 1
+          fi
+
+          package_version="$(sed -n '/^\[package\]/,/^\[/ s/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)"
+          if [[ -z "$package_version" ]]; then
+            echo "Could not read the StackPilot package version from Cargo.toml." >&2
+            exit 1
+          fi
+
+          if [[ "v$package_version" != "$tag" ]]; then
+            echo "Tag $tag does not match Cargo.toml version $package_version." >&2
+            echo "Update Cargo.toml first, then create tag v$package_version." >&2
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$package_version" >> "$GITHUB_OUTPUT"
+
   build:
     name: build / ${{ matrix.asset }}
+    needs: validate
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -34,8 +82,10 @@ jobs:
             archive: zip
 
     steps:
-      - name: Checkout
+      - name: Checkout release tag
         uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
 
       - name: Install Rust target
         uses: dtolnay/rust-toolchain@stable
@@ -49,6 +99,7 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/stackpilot" dist/stackpilot
           cp README.md LICENSE dist/
@@ -58,6 +109,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/stackpilot.exe" "dist/stackpilot.exe"
           Copy-Item README.md, LICENSE dist/
@@ -69,9 +121,13 @@ jobs:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}.${{ matrix.archive }}
           if-no-files-found: error
+          retention-days: 7
 
   publish:
-    needs: build
+    name: publish GitHub release
+    needs:
+      - validate
+      - build
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -82,13 +138,56 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Create GitHub release
+      - name: Generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum stackpilot-* > SHA256SUMS
+
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        shell: bash
         run: |
-          gh release create "$TAG" dist/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --verify-tag \
-            --generate-notes \
-            --title "StackPilot $TAG"
+          set -euo pipefail
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; uploading assets idempotently."
+            gh release upload "$TAG" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            gh release create "$TAG" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --generate-notes \
+              --title "StackPilot $TAG"
+          fi
+
+      - name: Verify published assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected=(
+            "stackpilot-linux-x86_64.tar.gz"
+            "stackpilot-macos-x86_64.tar.gz"
+            "stackpilot-macos-aarch64.tar.gz"
+            "stackpilot-windows-x86_64.zip"
+            "SHA256SUMS"
+          )
+
+          published="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          for asset in "${expected[@]}"; do
+            if ! grep -Fxq "$asset" <<< "$published"; then
+              echo "Published release is missing required asset: $asset" >&2
+              exit 1
+            fi
+          done
+
+          echo "Release $TAG contains all required assets."
