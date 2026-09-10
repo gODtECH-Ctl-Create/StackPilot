@@ -181,3 +181,30 @@ jobs:
         if: matrix.language == 'C#'
         working-directory: ${{ matrix.slug }}
         run: dotnet build app.csproj --configuration Release
+
+  website:
+    name: website / Astro
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install website dependencies
+        working-directory: website
+        run: npm install
+
+      - name: Build website
+        working-directory: website
+        run: npm run build
+
+      - name: Verify static pages
+        run: |
+          test -f website/dist/index.html
+          test -f website/dist/install/index.html
+          test -f website/dist/docs/index.html
+          test -f website/dist/golden-paths/index.html
