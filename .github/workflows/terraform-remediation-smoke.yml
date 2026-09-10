@@ -69,7 +69,7 @@ jobs:
 
           ./target/debug/stackpilot inspect "$repo" > inspect.txt
           grep -q 'Terraform' inspect.txt
-          grep -q 'Terraform configuration detected' inspect.txt
+          grep -Eq '[0-9]+ Terraform file\(s\) detected' inspect.txt
 
       - name: Verify Terraform remediation is idempotent
         run: |
