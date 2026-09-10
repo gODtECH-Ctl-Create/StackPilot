@@ -19,6 +19,8 @@ For deployable services, StackPilot defaults toward PostgreSQL, AWS, Docker, CI,
 
 Every generated service follows the same initial contract: a `/health` endpoint, port `3000`, container support, language-native CI, environment metadata, and optional Terraform infrastructure.
 
+> **v0.1 focus:** the fully validated golden paths are backend services/APIs. Additional project shapes such as frontend, full-stack, workers, CLI apps, and libraries remain roadmap targets rather than pretending to be production-ready today.
+
 ## Install
 
 Tagged releases publish native StackPilot binaries for Linux x86_64, macOS Intel, macOS Apple Silicon, and Windows x86_64.
@@ -124,7 +126,7 @@ stackpilot doctor
 - GitHub-template in-place bootstrap
 - GitHub Actions setup UI
 - Opinionated framework selection with `Auto`
-- Rust/Axum, Go/Chi, TypeScript/NestJS, Python/FastAPI, Java/Spring Boot, and C#/ASP.NET Core golden paths
+- Rust/Axum, Go/Chi, TypeScript/NestJS, Python/FastAPI, Java/Spring Boot, and C#/ASP.NET Core backend golden paths
 - Shared production container and Compose policy
 - Language-native generated CI
 - PostgreSQL-first database profile with MySQL, MongoDB, SQLite, or no database as supported alternatives
