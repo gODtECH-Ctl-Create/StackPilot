@@ -183,6 +183,10 @@ enum Commands {
         #[arg(long, default_value = "recipes")]
         recipes_dir: PathBuf,
 
+        /// Explicit cloud target for Terraform remediation: AWS, Azure, or GCP.
+        #[arg(long, value_name = "CLOUD")]
+        cloud: Option<String>,
+
         /// Write the planned safe changes. Without this flag, fix is a dry-run preview.
         #[arg(long)]
         apply: bool,
@@ -273,10 +277,11 @@ fn main() -> Result<()> {
         Commands::Fix {
             path,
             recipes_dir,
+            cloud,
             apply,
         } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
-            fix::run(&path, &recipes_dir, apply)?;
+            fix::run(&path, &recipes_dir, cloud.as_deref(), apply)?;
         }
         Commands::Recipes { recipes_dir } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
