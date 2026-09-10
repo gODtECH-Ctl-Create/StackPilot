@@ -1,0 +1,41 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+<Layout current="golden-paths" title="Golden Paths — StackPilot">
+  <section class="page-hero">
+    <div class="shell">
+      <div class="section-kicker">Golden paths</div>
+      <h1>Fewer choices. Better defaults.</h1>
+      <p>StackPilot does not try to scaffold every framework on the internet. Each ecosystem gets one backend path we continuously generate and validate.</p>
+    </div>
+  </section>
+
+  <div class="shell" style="padding-bottom:100px">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Language</th><th>Blessed framework</th><th>Runtime contract</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Rust</strong></td><td>Axum</td><td><code>:3000 /health</code></td><td><span class="tag">validated</span></td></tr>
+          <tr><td><strong>Go</strong></td><td>Chi</td><td><code>:3000 /health</code></td><td><span class="tag">validated</span></td></tr>
+          <tr><td><strong>TypeScript</strong></td><td>NestJS</td><td><code>:3000 /health</code></td><td><span class="tag">validated</span></td></tr>
+          <tr><td><strong>Python</strong></td><td>FastAPI</td><td><code>:3000 /health</code></td><td><span class="tag">validated</span></td></tr>
+          <tr><td><strong>Java</strong></td><td>Spring Boot</td><td><code>:3000 /health</code></td><td><span class="tag">validated</span></td></tr>
+          <tr><td><strong>C#</strong></td><td>ASP.NET Core</td><td><code>:3000 /health</code></td><td><span class="tag">validated</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <section class="section" style="border-top:0;padding-bottom:0">
+      <div class="section-head">
+        <div class="section-kicker">Shared foundation</div>
+        <h2>Different ecosystems. Same engineering contract.</h2>
+        <p class="section-lead">The application language changes; the operational expectations should not.</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="card"><span class="card-label">DATA</span><h3>PostgreSQL by default</h3><p>MySQL and MongoDB can be selected deliberately, but PostgreSQL is the recommended starting point.</p></div>
+        <div class="card"><span class="card-label">CLOUD</span><h3>AWS by default</h3><p>Terraform foundations prioritize AWS while preserving Azure and GCP profiles.</p></div>
+        <div class="card"><span class="card-label">DELIVERY</span><h3>Docker + CI + Terraform</h3><p>Deployable services start with container, pipeline and infrastructure foundations switched on.</p></div>
+      </div>
+    </section>
+  </div>
+</Layout>

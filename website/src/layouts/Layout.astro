@@ -1,0 +1,84 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  current?: 'home' | 'install' | 'docs' | 'golden-paths';
+}
+
+const {
+  title = 'StackPilot — Production-ready repositories, by default',
+  description = 'An opinionated scaffolding engine that turns a language choice into a production-minded backend repository.',
+  current = 'home',
+} = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+const href = (path = '') => `${base}${path}`;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#080b14" />
+    <link rel="icon" type="image/svg+xml" href={href('favicon.svg')} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <div class="site-glow site-glow-one"></div>
+    <div class="site-glow site-glow-two"></div>
+    <header class="site-header">
+      <div class="shell nav-wrap">
+        <a class="brand" href={href()} aria-label="StackPilot home">
+          <span class="brand-mark">SP</span>
+          <span>StackPilot</span>
+          <span class="alpha">v0.1</span>
+        </a>
+        <nav class="nav-links" aria-label="Primary navigation">
+          <a class:list={[{ active: current === 'install' }]} href={href('install/')}>Install</a>
+          <a class:list={[{ active: current === 'docs' }]} href={href('docs/')}>Docs</a>
+          <a class:list={[{ active: current === 'golden-paths' }]} href={href('golden-paths/')}>Golden paths</a>
+          <a class="github-link" href="https://github.com/gODtECH-Ctl-Create/StackPilot" target="_blank" rel="noreferrer">GitHub ↗</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-row">
+        <div>
+          <div class="brand footer-brand"><span class="brand-mark">SP</span><span>StackPilot</span></div>
+          <p>Production-minded repositories without the setup tax.</p>
+        </div>
+        <div class="footer-links">
+          <a href={href('docs/')}>Documentation</a>
+          <a href={href('install/')}>Install</a>
+          <a href="https://github.com/gODtECH-Ctl-Create/StackPilot" target="_blank" rel="noreferrer">Source</a>
+        </div>
+      </div>
+    </footer>
+
+    <script is:inline>
+      document.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-copy]');
+        if (!button) return;
+        const target = document.getElementById(button.getAttribute('data-copy'));
+        if (!target) return;
+        const text = target.textContent.trim();
+        try {
+          await navigator.clipboard.writeText(text);
+          const original = button.textContent;
+          button.textContent = 'Copied';
+          setTimeout(() => { button.textContent = original; }, 1400);
+        } catch (_) {
+          button.textContent = 'Select & copy';
+        }
+      });
+    </script>
+  </body>
+</html>

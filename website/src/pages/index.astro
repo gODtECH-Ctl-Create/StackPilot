@@ -1,0 +1,117 @@
+---
+import Layout from '../layouts/Layout.astro';
+const base = import.meta.env.BASE_URL;
+const href = (path = '') => `${base}${path}`;
+---
+<Layout current="home">
+  <section class="hero">
+    <div class="shell">
+      <div class="eyebrow"><span class="eyebrow-dot"></span> Opinionated backend scaffolding</div>
+      <h1><span class="gradient-text">Start production-ready.</span><br />Not from scratch.</h1>
+      <p class="hero-copy">Choose your language. StackPilot chooses the production-minded path — framework, Docker, CI, Terraform, health checks, database and cloud foundations included.</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href={href('install/')}>Install StackPilot →</a>
+        <a class="button" href={href('docs/')}>Read the docs</a>
+      </div>
+
+      <div class="terminal" aria-label="StackPilot terminal example">
+        <div class="terminal-top">
+          <div class="terminal-dots"><span></span><span></span><span></span></div>
+          <div class="terminal-title">~/projects</div>
+          <div></div>
+        </div>
+        <div class="terminal-body">
+          <div><span class="prompt">$</span> stackpilot new payments-api --language Rust</div>
+          <div class="dim">→ resolving StackPilot golden path</div>
+          <div>  framework&nbsp;&nbsp;&nbsp;<span class="value">Axum</span></div>
+          <div>  database&nbsp;&nbsp;&nbsp;&nbsp;<span class="value">PostgreSQL</span></div>
+          <div>  cloud&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="value">AWS</span></div>
+          <div>  defaults&nbsp;&nbsp;&nbsp;&nbsp;<span class="value">Docker · GitHub Actions · Terraform</span></div>
+          <div class="success">✓ payments-api is ready</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="install">
+    <div class="narrow">
+      <div class="section-kicker">Install</div>
+      <h2>One command. Then build.</h2>
+      <p class="section-lead">The installer pulls the latest StackPilot binary for your platform. No Rust toolchain required.</p>
+      <div class="install-strip">
+        <code id="home-install">curl -fsSL https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.sh | bash</code>
+        <button class="copy-button" data-copy="home-install">Copy</button>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin:10px 0 0">Windows? <a style="color:var(--green)" href={href('install/')}>See PowerShell installation →</a></p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="shell">
+      <div class="section-head">
+        <div class="section-kicker">Golden paths</div>
+        <h2>One language. One blessed path.</h2>
+        <p class="section-lead">StackPilot deliberately removes framework roulette. Each supported language gets one path we can test, improve and keep production-minded.</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="card stack-card"><div class="stack-icon">RS</div><div><strong>Rust</strong><span>Axum</span></div></div>
+        <div class="card stack-card"><div class="stack-icon">GO</div><div><strong>Go</strong><span>Chi</span></div></div>
+        <div class="card stack-card"><div class="stack-icon">TS</div><div><strong>TypeScript</strong><span>NestJS</span></div></div>
+        <div class="card stack-card"><div class="stack-icon">PY</div><div><strong>Python</strong><span>FastAPI</span></div></div>
+        <div class="card stack-card"><div class="stack-icon">JV</div><div><strong>Java</strong><span>Spring Boot</span></div></div>
+        <div class="card stack-card"><div class="stack-icon">C#</div><div><strong>C#</strong><span>ASP.NET Core</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="shell">
+      <div class="section-head">
+        <div class="section-kicker">By default</div>
+        <h2>The boring production work is already there.</h2>
+        <p class="section-lead">A generated service starts with the operational foundation teams normally bolt on days or weeks later.</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="card"><span class="card-label">01 / Runtime</span><h3>Production container</h3><p>Multi-stage Docker foundations and a consistent service contract.</p></div>
+        <div class="card"><span class="card-label">02 / Delivery</span><h3>GitHub Actions CI</h3><p>Language-native build and test checks generated with the repository.</p></div>
+        <div class="card"><span class="card-label">03 / Infrastructure</span><h3>Terraform foundation</h3><p>AWS-first infrastructure setup, with Azure and GCP available when needed.</p></div>
+        <div class="card"><span class="card-label">04 / Data</span><h3>PostgreSQL first</h3><p>A deliberate default instead of making every developer solve the same database choice.</p></div>
+        <div class="card"><span class="card-label">05 / Operability</span><h3>Health endpoint</h3><p>A common <code>/health</code> contract on port <code>3000</code> across every golden path.</p></div>
+        <div class="card"><span class="card-label">06 / Repository</span><h3>Engineering hygiene</h3><p>Documentation, environment conventions, PR guidance and a persistent StackPilot profile.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="shell">
+      <div class="section-head">
+        <div class="section-kicker">Workflow</div>
+        <h2>From idea to clean repository.</h2>
+      </div>
+      <div class="flow">
+        <div class="flow-step"><b>01</b><strong>Choose a language</strong><span>Tell StackPilot what ecosystem your service belongs to.</span></div>
+        <div class="flow-step"><b>02</b><strong>Preview the plan</strong><span>Use <code>stackpilot plan</code> to inspect exactly what will be generated.</span></div>
+        <div class="flow-step"><b>03</b><strong>Generate</strong><span>StackPilot applies the blessed framework and engineering foundation.</span></div>
+        <div class="flow-step"><b>04</b><strong>Ship features</strong><span>Start in application code instead of spending day one on repository setup.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="shell">
+      <div class="grid grid-2">
+        <div class="card"><span class="card-label">CLI</span><h3>Generate from your terminal</h3><p>Install StackPilot once and create backend services from anywhere with <code>stackpilot new</code>.</p></div>
+        <div class="card"><span class="card-label">GITHUB TEMPLATE</span><h3>Bootstrap from GitHub</h3><p>Click <strong>Use this template</strong>, then run the StackPilot bootstrap workflow from GitHub Actions to transform that repository in place.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="shell">
+      <div class="callout">
+        <div><h2>Stop rebuilding the foundation.</h2><p>Pick a language. Let StackPilot handle the first mile.</p></div>
+        <a class="button button-primary" href={href('docs/')}>Get started →</a>
+      </div>
+    </div>
+  </section>
+</Layout>
