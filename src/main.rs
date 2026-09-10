@@ -2,6 +2,7 @@ mod bootstrap;
 mod doctor;
 mod git;
 mod inspect;
+mod readiness;
 mod recipe;
 mod scaffold;
 mod spec;
@@ -160,11 +161,15 @@ enum Commands {
         force: bool,
     },
 
-    /// Inspect an existing repository for technology and production foundations.
+    /// Inspect an existing repository and calculate its production readiness score.
     Inspect {
         /// Repository directory to inspect. Defaults to the current directory.
         #[arg(default_value = ".")]
         path: PathBuf,
+
+        /// Exit non-zero when readiness is below this 0-100 threshold.
+        #[arg(long, value_name = "SCORE")]
+        fail_below: Option<u8>,
     },
 
     /// List available StackPilot recipes.
@@ -246,8 +251,8 @@ fn main() -> Result<()> {
 
             bootstrap::run(&project_spec, &recipe, &recipes_dir, keep_engine, force)?;
         }
-        Commands::Inspect { path } => {
-            inspect::run(&path)?;
+        Commands::Inspect { path, fail_below } => {
+            readiness::run(&path, fail_below)?;
         }
         Commands::Recipes { recipes_dir } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
