@@ -29,7 +29,7 @@ jobs:
         with:
           ref: ${{ env.RELEASE_TAG }}
 
-      - name: Validate tag and package version
+      - name: Validate tag, package version and lockfile
         id: release
         shell: bash
         run: |
@@ -50,6 +50,11 @@ jobs:
           if [[ "v$package_version" != "$tag" ]]; then
             echo "Tag $tag does not match Cargo.toml version $package_version." >&2
             echo "Update Cargo.toml first, then create tag v$package_version." >&2
+            exit 1
+          fi
+
+          if [[ ! -f Cargo.lock ]]; then
+            echo "Cargo.lock is required for reproducible StackPilot release builds." >&2
             exit 1
           fi
 
@@ -93,7 +98,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --locked --release --target ${{ matrix.target }}
 
       - name: Package Unix binary and recipes
         if: runner.os != 'Windows'

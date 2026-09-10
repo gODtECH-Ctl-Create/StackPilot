@@ -22,6 +22,8 @@ Do not prefix release tags with `StackPilot-` or create a differently named GitH
 
 The tag version must exactly match the version in `Cargo.toml`. For example, `version = "0.1.2"` must be released with tag `v0.1.2`.
 
+`Cargo.lock` is committed and release/CI builds use Cargo's `--locked` mode. If dependency resolution drifts from the committed lockfile, CI or the release build must fail rather than silently selecting new dependency versions.
+
 ## Public website metadata
 
 Release-facing website data lives in:
@@ -50,14 +52,16 @@ Only publish statistics that are directly verifiable. Product facts such as supp
 
 5. The `Release` GitHub Actions workflow will automatically:
    - validate the tag against `Cargo.toml`;
-   - build native release binaries;
+   - require the committed `Cargo.lock`;
+   - build every native release binary with `cargo build --locked`;
    - package Windows, Linux, and macOS archives;
    - bundle the `recipes` directory in every platform archive;
    - generate `SHA256SUMS`;
    - create the GitHub release;
    - upload all release assets;
    - verify that every expected asset is present.
-6. Run the installer smoke tests below. If a newly claimed platform or workflow is verified, update the website proof points in the next documentation commit so the public story stays evidence-based.
+6. Publishing the GitHub Release automatically starts the `Installed Release Smoke` workflow. Do not announce the release as installable until that matrix is green.
+7. If a newly claimed platform or workflow is verified, update the website proof points in the next documentation commit so the public story stays evidence-based.
 
 ## Expected release assets
 
@@ -73,15 +77,38 @@ SHA256SUMS
 
 Each platform archive must also contain the StackPilot recipe library, including `recipes/base/recipe.toml`. Do not announce a release as installable until all five assets appear on the GitHub release page and the installed CLI can resolve its bundled recipes outside the source repository.
 
+## Automated installed-release verification
+
+`.github/workflows/release-smoke.yml` verifies the public installation experience on all four native release targets:
+
+- Linux x86_64
+- macOS x86_64
+- macOS arm64
+- Windows x86_64
+
+For each target the workflow installs a published StackPilot release into an isolated runner directory, then runs:
+
+```text
+stackpilot --version
+stackpilot doctor
+stackpilot recipes
+stackpilot plan ...
+stackpilot new ...
+```
+
+The generated smoke project must include StackPilot metadata, Docker, GitHub Actions CI and Terraform output. The workflow runs automatically when a GitHub Release is published, can be started manually for a specific tag, and also validates installer/release changes in pull requests against the latest published release.
+
 ## Retrying a release
 
 The publish step is idempotent. If the release already exists, the workflow uploads the generated assets with replacement enabled rather than failing because the release already exists.
 
 For an existing valid `vX.Y.Z` tag, the workflow can also be run manually from **Actions → Release → Run workflow** and supplied with that existing tag. The workflow checks out the tag itself, so the tag must already exist in the repository.
 
-## Installer smoke tests
+The installed-release matrix can be re-run independently from **Actions → Installed Release Smoke → Run workflow**. Supply a tag such as `v0.1.2`, or leave it blank to test the current latest release.
 
-After the release finishes, test the public installation paths before announcing it. Run the CLI from a normal user directory that does not contain a local `recipes` folder; this confirms the installed recipe fallback works.
+## Manual installer smoke tests
+
+The automated matrix is the release gate. Manual testing is still valuable when diagnosing a user-specific issue or when a release changes interactive shell behavior. Run the CLI from a normal user directory that does not contain a local `recipes` folder; this confirms the installed recipe fallback works.
 
 ### Windows
 
