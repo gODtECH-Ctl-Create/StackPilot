@@ -47,6 +47,18 @@ jobs:
       - name: Build CLI
         run: cargo build
 
+      - name: Smoke test installed recipe resolution
+        run: |
+          rm -rf /tmp/stackpilot-install /tmp/stackpilot-user
+          mkdir -p /tmp/stackpilot-install /tmp/stackpilot-user
+          cp target/debug/stackpilot /tmp/stackpilot-install/stackpilot
+          cp -R recipes /tmp/stackpilot-install/recipes
+          cd /tmp/stackpilot-user
+          /tmp/stackpilot-install/stackpilot doctor
+          /tmp/stackpilot-install/stackpilot recipes | grep -q '^base - '
+          /tmp/stackpilot-install/stackpilot plan installed-smoke --recipe base --non-interactive > plan.txt
+          grep -q '.stackpilot.toml' plan.txt
+
       - name: Smoke test GitHub template bootstrap
         run: |
           mkdir -p /tmp/stackpilot-bootstrap
