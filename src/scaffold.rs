@@ -1,6 +1,7 @@
 use std::{
+    collections::HashSet,
     fs,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 use anyhow::{Context, Result, bail};
@@ -30,6 +31,15 @@ pub fn create_project(
     Ok(destination)
 }
 
+pub fn plan_project(
+    spec: &ProjectSpec,
+    recipe_name: &str,
+    recipes_dir: &Path,
+) -> Result<Vec<PathBuf>> {
+    let (recipe, _) = Recipe::load(recipes_dir, recipe_name)?;
+    selected_destinations(spec, &recipe)
+}
+
 pub fn render_in_place(
     spec: &ProjectSpec,
     recipe_name: &str,
@@ -46,16 +56,11 @@ fn render_files(
     recipe_dir: &Path,
     destination: &Path,
 ) -> Result<Vec<PathBuf>> {
+    let selected = selected_files(spec, recipe)?;
     let mut env = Environment::new();
-    let mut generated = Vec::new();
+    let mut generated = Vec::with_capacity(selected.len());
 
-    for file in &recipe.files {
-        if let Some(condition) = &file.when
-            && !matches_condition(condition, spec)?
-        {
-            continue;
-        }
-
+    for (file, relative_destination) in selected {
         let source = recipe_dir.join("templates").join(&file.template);
         let template_source = fs::read_to_string(&source)
             .with_context(|| format!("failed to read template {}", source.display()))?;
@@ -77,7 +82,6 @@ fn render_files(
             recipe_description => recipe.description.clone().unwrap_or_default(),
         })?;
 
-        let relative_destination = PathBuf::from(render_destination(&file.destination, &spec.name));
         let target = destination.join(&relative_destination);
         if let Some(parent) = target.parent() {
             fs::create_dir_all(parent)?;
@@ -88,6 +92,61 @@ fn render_files(
     }
 
     Ok(generated)
+}
+
+fn selected_destinations(spec: &ProjectSpec, recipe: &Recipe) -> Result<Vec<PathBuf>> {
+    Ok(selected_files(spec, recipe)?
+        .into_iter()
+        .map(|(_, destination)| destination)
+        .collect())
+}
+
+fn selected_files<'a>(
+    spec: &ProjectSpec,
+    recipe: &'a Recipe,
+) -> Result<Vec<(&'a crate::recipe::RecipeFile, PathBuf)>> {
+    let mut selected = Vec::new();
+    let mut destinations = HashSet::new();
+
+    for file in &recipe.files {
+        if let Some(condition) = &file.when
+            && !matches_condition(condition, spec)?
+        {
+            continue;
+        }
+
+        let destination = safe_destination(&file.destination, &spec.name)?;
+        if !destinations.insert(destination.clone()) {
+            bail!(
+                "recipe '{}' resolves more than one file to {}",
+                recipe.name,
+                destination.display()
+            );
+        }
+        selected.push((file, destination));
+    }
+
+    Ok(selected)
+}
+
+fn safe_destination(destination: &str, project_name: &str) -> Result<PathBuf> {
+    let rendered = destination.replace("{{project_name}}", project_name);
+    let path = PathBuf::from(&rendered);
+
+    if path.as_os_str().is_empty() || path.is_absolute() {
+        bail!("recipe destination must be a non-empty relative path: {rendered}");
+    }
+
+    if path.components().any(|component| {
+        matches!(
+            component,
+            Component::ParentDir | Component::RootDir | Component::Prefix(_)
+        )
+    }) {
+        bail!("recipe destination escapes the project directory: {rendered}");
+    }
+
+    Ok(path)
 }
 
 fn matches_condition(condition: &str, spec: &ProjectSpec) -> Result<bool> {
@@ -126,21 +185,24 @@ fn matches_clause(clause: &str, spec: &ProjectSpec) -> Result<bool> {
     }
 }
 
-fn render_destination(destination: &str, project_name: &str) -> String {
-    destination.replace("{{project_name}}", project_name)
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{matches_condition, render_destination};
+    use super::{matches_condition, safe_destination};
     use crate::spec::ProjectSpec;
 
     #[test]
-    fn renders_project_name_in_destination() {
+    fn renders_project_name_in_safe_destination() {
         assert_eq!(
-            render_destination("services/{{project_name}}/README.md", "payments"),
-            "services/payments/README.md"
+            safe_destination("services/{{project_name}}/README.md", "payments")
+                .expect("safe destination"),
+            std::path::PathBuf::from("services/payments/README.md")
         );
+    }
+
+    #[test]
+    fn rejects_destinations_that_escape_project_root() {
+        assert!(safe_destination("../outside.txt", "payments").is_err());
+        assert!(safe_destination("/tmp/outside.txt", "payments").is_err());
     }
 
     #[test]
