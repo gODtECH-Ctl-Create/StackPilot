@@ -297,13 +297,9 @@ mod tests {
         )
         .expect("valid spec");
 
-        let rendered = render_destination(
-            &spec,
-            "base",
-            Path::new("recipes"),
-            Path::new("Dockerfile"),
-        )
-        .expect("render Dockerfile");
+        let rendered =
+            render_destination(&spec, "base", Path::new("recipes"), Path::new("Dockerfile"))
+                .expect("render Dockerfile");
 
         assert!(rendered.contains("FROM golang:1.27-alpine AS build"));
         assert!(rendered.contains("ENTRYPOINT [\"/app\"]"));

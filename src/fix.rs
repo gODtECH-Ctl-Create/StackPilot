@@ -359,7 +359,10 @@ fn plan_ci_fix(
     Ok(())
 }
 
-fn verified_stack_profile(root: &Path, report: &InspectionReport) -> Result<StackProfile, String> {
+fn verified_stack_profile(
+    root: &Path,
+    report: &InspectionReport,
+) -> std::result::Result<StackProfile, String> {
     let language = single_value(&report.languages).ok_or_else(|| {
         "automatic Docker/CI generation requires exactly one detected language".to_string()
     })?;
@@ -447,7 +450,7 @@ fn verified_stack_profile(root: &Path, report: &InspectionReport) -> Result<Stac
     })
 }
 
-fn cargo_package_name(root: &Path) -> Result<String, String> {
+fn cargo_package_name(root: &Path) -> std::result::Result<String, String> {
     let content = read_required_text(root, "Cargo.toml")?;
     let manifest: toml::Value = toml::from_str(&content)
         .map_err(|error| format!("Cargo.toml could not be parsed safely: {error}"))?;
@@ -456,10 +459,12 @@ fn cargo_package_name(root: &Path) -> Result<String, String> {
         .and_then(|package| package.get("name"))
         .and_then(toml::Value::as_str)
         .map(str::to_string)
-        .ok_or_else(|| "Rust auto-remediation requires a root [package].name in Cargo.toml".to_string())
+        .ok_or_else(|| {
+            "Rust auto-remediation requires a root [package].name in Cargo.toml".to_string()
+        })
 }
 
-fn require_file(root: &Path, relative: &str) -> Result<(), String> {
+fn require_file(root: &Path, relative: &str) -> std::result::Result<(), String> {
     let path = root.join(relative);
     let metadata = fs::symlink_metadata(&path)
         .map_err(|_| format!("automatic remediation requires {relative}"))?;
@@ -471,7 +476,7 @@ fn require_file(root: &Path, relative: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn read_required_text(root: &Path, relative: &str) -> Result<String, String> {
+fn read_required_text(root: &Path, relative: &str) -> std::result::Result<String, String> {
     require_file(root, relative)?;
     fs::read_to_string(root.join(relative))
         .map_err(|error| format!("failed to read {relative}: {error}"))
@@ -557,14 +562,20 @@ fn ensure_safe_relative_path(path: &Path) -> Result<()> {
             Component::ParentDir | Component::RootDir | Component::Prefix(_)
         )
     }) {
-        bail!("refusing remediation path outside repository: {}", path.display());
+        bail!(
+            "refusing remediation path outside repository: {}",
+            path.display()
+        );
     }
     Ok(())
 }
 
 fn ensure_no_symlink_ancestors(root: &Path, relative: &Path) -> Result<()> {
     if let Some(path) = first_symlink_ancestor(root, relative)? {
-        bail!("refusing to write through symlinked path {}", path.display());
+        bail!(
+            "refusing to write through symlinked path {}",
+            path.display()
+        );
     }
     Ok(())
 }
@@ -818,7 +829,11 @@ mod tests {
             "module example.com/payments\n\ngo 1.27\n\nrequire github.com/go-chi/chi/v5 v5.0.0\n",
         )
         .expect("go.mod");
-        fs::write(repo.path().join("main.go"), "package main\nfunc main() {}\n").expect("main.go");
+        fs::write(
+            repo.path().join("main.go"),
+            "package main\nfunc main() {}\n",
+        )
+        .expect("main.go");
 
         let plan = plan_repository(repo.path(), Path::new("recipes")).expect("fix plan");
 
@@ -942,7 +957,11 @@ mod tests {
             "module example.com/payments\n\ngo 1.27\n\nrequire github.com/go-chi/chi/v5 v5.0.0\n",
         )
         .expect("go.mod");
-        fs::write(repo.path().join("main.go"), "package main\nfunc main() {}\n").expect("main.go");
+        fs::write(
+            repo.path().join("main.go"),
+            "package main\nfunc main() {}\n",
+        )
+        .expect("main.go");
         symlink(outside.path(), repo.path().join(".github")).expect("symlink .github");
 
         let plan = plan_repository(repo.path(), Path::new("recipes")).expect("fix plan");
