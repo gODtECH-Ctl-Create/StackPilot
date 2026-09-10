@@ -1,14 +1,18 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { currentTag, latestReleaseUrl, site } from '../../data/site';
 const base = import.meta.env.BASE_URL;
 const href = (path = '') => `${base}${path}`;
 ---
-<Layout current="install" title="Install StackPilot — StackPilot">
+<Layout current="install" title={`Install StackPilot ${currentTag} — StackPilot`}>
   <section class="page-hero">
     <div class="shell">
-      <div class="section-kicker">Installation</div>
+      <div class="section-kicker">Installation · {currentTag}</div>
       <h1>Install StackPilot.</h1>
-      <p>Use the release installer for the simplest setup, or install from source while the first public release is being finalized.</p>
+      <p>The current stable release is {currentTag}. The release installers download the native binary and bundled recipe library so StackPilot works from any normal project directory.</p>
+      <div class="hero-actions" style="justify-content:flex-start;margin-top:22px">
+        <a class="button" href={latestReleaseUrl} target="_blank" rel="noreferrer">View {currentTag} on GitHub ↗</a>
+      </div>
     </div>
   </section>
 
@@ -16,29 +20,47 @@ const href = (path = '') => `${base}${path}`;
     <aside class="docs-nav">
       <a class="active" href="#unix">macOS / Linux</a>
       <a href="#windows">Windows</a>
-      <a href="#source">From source</a>
       <a href="#verify">Verify</a>
+      <a href="#support">Release support</a>
+      <a href="#source">From source</a>
       <a href={href('docs/')}>CLI docs →</a>
     </aside>
     <article class="doc">
       <h2 id="unix">macOS & Linux</h2>
-      <p>The install script detects your OS and architecture, downloads the latest GitHub release, and installs <code>stackpilot</code> into <code>~/.local/bin</code>.</p>
+      <p>The install script detects your OS and architecture, downloads the latest GitHub release, installs <code>stackpilot</code> into <code>~/.local/bin</code>, and installs the bundled recipes beside the executable.</p>
       <div class="code-block"><button class="copy-button" data-copy="unix-code">Copy</button><pre id="unix-code"><code>curl -fsSL https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.sh | bash</code></pre></div>
-      <div class="note">The release installer requires a published StackPilot release. If <code>v0.1.0</code> has not been published yet, use the source installation below.</div>
+      <div class="note">Published native packages currently cover Linux x86_64, macOS x86_64 and macOS Apple Silicon. Linux ARM64 is not published yet.</div>
 
       <h2 id="windows">Windows PowerShell</h2>
-      <p>Run PowerShell as your normal user. The installer downloads the Windows binary, installs it into your user profile and updates your user PATH.</p>
+      <p>Run PowerShell as your normal user. The installer downloads the Windows x86_64 archive, installs <code>stackpilot.exe</code> and its recipes into your user profile, and updates your user PATH.</p>
       <div class="code-block"><button class="copy-button" data-copy="win-code">Copy</button><pre id="win-code"><code>irm https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.ps1 | iex</code></pre></div>
-
-      <h2 id="source">Install from source</h2>
-      <p>If you already have a Rust toolchain, Cargo can install StackPilot directly from the repository.</p>
-      <div class="code-block"><button class="copy-button" data-copy="source-code">Copy</button><pre id="source-code"><code>cargo install --git https://github.com/gODtECH-Ctl-Create/StackPilot.git</code></pre></div>
+      <div class="note">The {currentTag} Windows path has been verified end-to-end from installation through diagnostics, recipe discovery, planning and real NestJS project generation.</div>
 
       <h2 id="verify">Verify the installation</h2>
       <div class="code-block"><button class="copy-button" data-copy="verify-code">Copy</button><pre id="verify-code"><code>stackpilot --version
-stackpilot doctor</code></pre></div>
+stackpilot doctor
+stackpilot recipes
+stackpilot plan smoke-test --recipe base --non-interactive</code></pre></div>
+      <p><code>stackpilot --version</code> should report <strong>stackpilot {site.currentVersion}</strong>. <code>doctor</code> should validate the bundled recipe directory, and <code>recipes</code> should list the <code>base</code> recipe.</p>
       <p>Then create your first backend service:</p>
       <div class="code-block"><button class="copy-button" data-copy="first-code">Copy</button><pre id="first-code"><code>stackpilot new my-service --language Rust</code></pre></div>
+
+      <h2 id="support">Release support</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Platform</th><th>Architecture</th><th>Release package</th></tr></thead>
+          <tbody>
+            <tr><td>Windows</td><td>x86_64</td><td><span class="tag">published</span></td></tr>
+            <tr><td>Linux</td><td>x86_64</td><td><span class="tag">published</span></td></tr>
+            <tr><td>macOS</td><td>x86_64</td><td><span class="tag">published</span></td></tr>
+            <tr><td>macOS</td><td>Apple Silicon</td><td><span class="tag">published</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="source">Install from source</h2>
+      <p>If you already have a Rust toolchain, Cargo can install StackPilot directly from the repository. Release installers are recommended for normal users because they also install the recipe library required by the CLI.</p>
+      <div class="code-block"><button class="copy-button" data-copy="source-code">Copy</button><pre id="source-code"><code>cargo install --git https://github.com/gODtECH-Ctl-Create/StackPilot.git</code></pre></div>
       <p><a href={href('docs/')}>Continue to the CLI guide →</a></p>
     </article>
   </div>
