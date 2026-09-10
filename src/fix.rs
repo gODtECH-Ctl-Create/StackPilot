@@ -194,7 +194,7 @@ fn plan_metadata_fix(
         description:
             "adopt the repository into StackPilot metadata without changing application code"
                 .to_string(),
-        content: stackpilot_metadata(root, report)?,
+        content: stackpilot_metadata(root, report),
     });
 
     Ok(())
@@ -308,17 +308,70 @@ fn environment_example(root: &Path) -> String {
     )
 }
 
-fn stackpilot_metadata(root: &Path, report: &InspectionReport) -> Result<String> {
+fn stackpilot_metadata(root: &Path, report: &InspectionReport) -> String {
     let name = toml_string(&repository_name(root));
-    let language = toml_string(single_value(&report.languages).unwrap_or("Unknown"));
-    let framework = toml_string(single_value(&report.frameworks).unwrap_or("Unknown"));
+    let detected_language = single_value(&report.languages).unwrap_or("Generic");
+    let language = normalized_language(detected_language);
+    let framework = normalized_framework(language, single_value(&report.frameworks));
     let docker = finding_status(report, "Docker") == Some(FindingStatus::Passed);
     let ci = finding_status(report, "CI/CD") == Some(FindingStatus::Passed);
     let terraform = finding_status(report, "Terraform") == Some(FindingStatus::Passed);
+    let detected_languages = toml_array(&report.languages);
+    let detected_frameworks = toml_array(&report.frameworks);
 
-    Ok(format!(
-        "version = 1\n\n[project]\nname = \"{name}\"\nkind = \"Existing repository\"\nlanguage = \"{language}\"\nframework = \"{framework}\"\ndatabase = \"Unknown\"\ncloud = \"Unknown\"\n\n[features]\ndocker = {docker}\nci = {ci}\nterraform = {terraform}\n\n[stackpilot]\nrecipe = \"adopted\"\nmanaged = false\n"
-    ))
+    format!(
+        "version = 1
+
+[project]
+name = \"{name}\"
+kind = \"Generic\"
+language = \"{language}\"
+framework = \"{framework}\"
+database = \"None\"
+cloud = \"None\"
+
+[features]
+docker = {docker}
+ci = {ci}
+terraform = {terraform}
+
+[stackpilot]
+recipe = \"adopted\"
+managed = false
+
+[detected]
+languages = {detected_languages}
+frameworks = {detected_frameworks}
+"
+    )
+}
+
+fn normalized_language(language: &str) -> &str {
+    match language {
+        "Rust" | "Go" | "TypeScript" | "Python" | "Java" | "C#" => language,
+        _ => "Generic",
+    }
+}
+
+fn normalized_framework<'a>(language: &str, framework: Option<&'a str>) -> &'a str {
+    match (language, framework) {
+        ("Rust", Some("Axum")) => "Axum",
+        ("Go", Some("Chi")) => "Chi",
+        ("TypeScript", Some("NestJS")) => "NestJS",
+        ("Python", Some("FastAPI")) => "FastAPI",
+        ("Java", Some("Spring Boot")) => "Spring Boot",
+        ("C#", Some("ASP.NET Core")) => "ASP.NET Core",
+        _ => "None",
+    }
+}
+
+fn toml_array(values: &[String]) -> String {
+    let values = values
+        .iter()
+        .map(|value| format!("\"{}\"", toml_string(value)))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{values}]")
 }
 
 fn repository_name(root: &Path) -> String {
