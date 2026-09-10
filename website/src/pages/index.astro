@@ -55,6 +55,28 @@ const href = (path = '') => `${base}${path}`;
     </div>
   </section>
 
+  <section class="section">
+    <div class="shell">
+      <div class="section-head">
+        <div class="section-kicker">Proof</div>
+        <h2>See the green path.</h2>
+        <p class="section-lead">Release claims are backed by reproducible checks. These captures preserve the verified terminal result and the green CI run that covered the engine, website and every golden path.</p>
+      </div>
+      <div class="grid grid-2">
+        <figure class="card" style="margin:0;padding:14px">
+          <img src={href('proof/windows-v0.1.2.svg')} alt="StackPilot v0.1.2 successful Windows terminal verification" loading="lazy" style="display:block;width:100%;height:auto;border-radius:12px" />
+          <figcaption style="padding:14px 8px 4px;color:var(--muted);font-size:13px"><strong style="color:var(--text)">Windows v0.1.2 verification.</strong> Reproduced from the successful public installer, doctor, recipes, plan and project-generation run.</figcaption>
+        </figure>
+        <figure class="card" style="margin:0;padding:14px">
+          <a href="https://github.com/gODtECH-Ctl-Create/StackPilot/actions/runs/34481881427" target="_blank" rel="noreferrer" aria-label="Open successful GitHub Actions CI run 80">
+            <img src={href('proof/ci-run-80.svg')} alt="StackPilot successful GitHub Actions CI run 80" loading="lazy" style="display:block;width:100%;height:auto;border-radius:12px" />
+          </a>
+          <figcaption style="padding:14px 8px 4px;color:var(--muted);font-size:13px"><strong style="color:var(--text)">CI run #80.</strong> Engine, website and all six golden-path jobs completed successfully; open the capture to inspect the workflow on GitHub.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="install">
     <div class="narrow">
       <div class="section-kicker">Install · {currentTag}</div>
