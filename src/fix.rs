@@ -65,8 +65,8 @@ struct StackProfile {
     framework: &'static str,
 }
 
-pub fn run(root: &Path, recipes_dir: &Path, apply: bool) -> Result<()> {
-    let plan = plan_repository(root, recipes_dir)?;
+pub fn run(root: &Path, recipes_dir: &Path, cloud: Option<&str>, apply: bool) -> Result<()> {
+    let plan = plan_repository(root, recipes_dir, cloud)?;
     print_plan(&plan, apply);
 
     if !apply {
@@ -99,7 +99,7 @@ pub fn run(root: &Path, recipes_dir: &Path, apply: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn plan_repository(root: &Path, recipes_dir: &Path) -> Result<FixPlan> {
+pub fn plan_repository(root: &Path, recipes_dir: &Path, cloud: Option<&str>) -> Result<FixPlan> {
     if !root.exists() {
         bail!("repository path does not exist: {}", root.display());
     }
@@ -115,8 +115,9 @@ pub fn plan_repository(root: &Path, recipes_dir: &Path) -> Result<FixPlan> {
     let mut changes = Vec::new();
 
     plan_environment_fixes(&root, &report, &mut changes)?;
-    let deferred = plan_stack_fixes(&root, &report, recipes_dir, &mut changes)?;
-    plan_metadata_fix(&root, &report, &mut changes)?;
+    let cloud = normalize_cloud(cloud)?;
+    let deferred = plan_stack_fixes(&root, &report, recipes_dir, cloud, &mut changes)?;
+    plan_metadata_fix(&root, &report, cloud, &mut changes)?;
 
     Ok(FixPlan {
         root,
@@ -190,6 +191,7 @@ fn plan_stack_fixes(
     root: &Path,
     report: &InspectionReport,
     recipes_dir: &Path,
+    cloud: Option<&str>,
     changes: &mut Vec<PlannedChange>,
 ) -> Result<Vec<DeferredFix>> {
     let docker_needed = finding_status(report, "Docker") != Some(FindingStatus::Passed);
@@ -254,11 +256,23 @@ fn plan_stack_fixes(
     }
 
     if finding_status(report, "Terraform") != Some(FindingStatus::Passed) {
-        deferred.push(DeferredFix {
-            control: "Terraform",
-            reason: "infrastructure generation needs an explicit cloud/deployment target rather than guessing"
-                .to_string(),
-        });
+        match cloud {
+            Some(cloud) if recipes_dir.is_dir() => {
+                plan_terraform_fix(root, report, recipes_dir, cloud, changes, &mut deferred)?;
+            }
+            Some(_) => deferred.push(DeferredFix {
+                control: "Terraform",
+                reason: format!(
+                    "StackPilot recipes were not found at {}; pass --recipes-dir or reinstall StackPilot",
+                    recipes_dir.display()
+                ),
+            }),
+            None => deferred.push(DeferredFix {
+                control: "Terraform",
+                reason: "infrastructure generation requires explicit intent; pass --cloud AWS, --cloud Azure, or --cloud GCP"
+                    .to_string(),
+            }),
+        }
     }
     if finding_status(report, "Health check") != Some(FindingStatus::Passed) {
         deferred.push(DeferredFix {
@@ -357,6 +371,100 @@ fn plan_ci_fix(
     });
 
     Ok(())
+}
+
+fn plan_terraform_fix(
+    root: &Path,
+    report: &InspectionReport,
+    recipes_dir: &Path,
+    cloud: &str,
+    changes: &mut Vec<PlannedChange>,
+    deferred: &mut Vec<DeferredFix>,
+) -> Result<()> {
+    let targets = [
+        Path::new("infra/terraform/main.tf"),
+        Path::new("infra/terraform/variables.tf"),
+        Path::new("infra/terraform/README.md"),
+    ];
+
+    if targets
+        .iter()
+        .any(|path| path_entry_exists(&root.join(path)))
+    {
+        deferred.push(DeferredFix {
+            control: "Terraform",
+            reason: "a Terraform foundation already exists but was not recognized; StackPilot will not overwrite or replace it"
+                .to_string(),
+        });
+        return Ok(());
+    }
+
+    if let Some(path) = first_symlink_ancestor(root, Path::new("infra/terraform/main.tf"))? {
+        deferred.push(DeferredFix {
+            control: "Terraform",
+            reason: format!(
+                "the Terraform target path contains a symlink at {}; StackPilot will not write through symlinked directories",
+                path.display()
+            ),
+        });
+        return Ok(());
+    }
+
+    let profile = verified_stack_profile(root, report).ok();
+    let (language, framework, project_name) = match profile {
+        Some(profile) => (profile.language, profile.framework, profile.project_name),
+        None => (
+            "Generic",
+            "None",
+            env_value(&repository_name(root)).replace('.', "_"),
+        ),
+    };
+
+    let spec = ProjectSpec::configured(
+        project_name,
+        "Generic".to_string(),
+        language.to_string(),
+        framework.to_string(),
+        "None".to_string(),
+        cloud.to_string(),
+        false,
+        false,
+        true,
+    )?;
+
+    for (path, description) in [
+        (
+            Path::new("infra/terraform/main.tf"),
+            "generate the explicit-cloud Terraform provider foundation",
+        ),
+        (
+            Path::new("infra/terraform/variables.tf"),
+            "generate Terraform variables for the selected cloud",
+        ),
+        (
+            Path::new("infra/terraform/README.md"),
+            "document the generated Terraform foundation and next deployment steps",
+        ),
+    ] {
+        changes.push(PlannedChange {
+            path: path.to_path_buf(),
+            kind: ChangeKind::Create,
+            description: description.to_string(),
+            content: scaffold::render_destination(&spec, RECIPE_NAME, recipes_dir, path)?,
+        });
+    }
+
+    Ok(())
+}
+
+fn normalize_cloud(cloud: Option<&str>) -> Result<Option<&'static str>> {
+    match cloud {
+        None => Ok(None),
+        Some(value) if value.eq_ignore_ascii_case("AWS") => Ok(Some("AWS")),
+        Some(value) if value.eq_ignore_ascii_case("Azure") => Ok(Some("Azure")),
+        Some(value) if value.eq_ignore_ascii_case("GCP") => Ok(Some("GCP")),
+        Some(value) => bail!("unsupported cloud '{value}'; choose one of: AWS, Azure, GCP"),
+    }
 }
 
 fn verified_stack_profile(
@@ -485,6 +593,7 @@ fn read_required_text(root: &Path, relative: &str) -> std::result::Result<String
 fn plan_metadata_fix(
     root: &Path,
     report: &InspectionReport,
+    cloud: Option<&str>,
     changes: &mut Vec<PlannedChange>,
 ) -> Result<()> {
     let metadata_path = root.join(".stackpilot.toml");
@@ -498,7 +607,7 @@ fn plan_metadata_fix(
         description:
             "adopt the repository into StackPilot metadata without changing application code"
                 .to_string(),
-        content: stackpilot_metadata(root, report, changes),
+        content: stackpilot_metadata(root, report, cloud, changes),
     });
 
     Ok(())
@@ -649,6 +758,7 @@ fn environment_example(root: &Path) -> String {
 fn stackpilot_metadata(
     root: &Path,
     report: &InspectionReport,
+    cloud: Option<&str>,
     changes: &[PlannedChange],
 ) -> String {
     let name = toml_string(&repository_name(root));
@@ -660,7 +770,9 @@ fn stackpilot_metadata(
         || planned_create(changes, "compose.yaml");
     let ci = finding_status(report, "CI/CD") == Some(FindingStatus::Passed)
         || planned_create(changes, ".github/workflows/ci.yml");
-    let terraform = finding_status(report, "Terraform") == Some(FindingStatus::Passed);
+    let terraform = finding_status(report, "Terraform") == Some(FindingStatus::Passed)
+        || planned_create(changes, "infra/terraform/main.tf");
+    let cloud = cloud.unwrap_or("None");
     let detected_languages = toml_array(&report.languages);
     let detected_frameworks = toml_array(&report.frameworks);
 
@@ -673,7 +785,7 @@ kind = \"Generic\"
 language = \"{language}\"
 framework = \"{framework}\"
 database = \"None\"
-cloud = \"None\"
+cloud = \"{cloud}\"
 
 [features]
 docker = {docker}
@@ -794,7 +906,7 @@ mod tests {
         .expect("package manifest");
         fs::write(repo.path().join("tsconfig.json"), "{}").expect("tsconfig");
 
-        let plan = plan_repository(repo.path(), Path::new("recipes")).expect("fix plan");
+        let plan = plan_repository(repo.path(), Path::new("recipes"), None).expect("fix plan");
 
         assert!(
             plan.changes
@@ -835,7 +947,7 @@ mod tests {
         )
         .expect("main.go");
 
-        let plan = plan_repository(repo.path(), Path::new("recipes")).expect("fix plan");
+        let plan = plan_repository(repo.path(), Path::new("recipes"), None).expect("fix plan");
 
         for path in [
             "Dockerfile",
@@ -871,7 +983,7 @@ mod tests {
     fn apply_creates_environment_hygiene_without_overwriting_source() {
         let repo = tempdir().expect("repository");
         fs::write(repo.path().join("main.go"), "package main\n").expect("source");
-        let plan = plan_repository(repo.path(), Path::new("recipes")).expect("fix plan");
+        let plan = plan_repository(repo.path(), Path::new("recipes"), None).expect("fix plan");
 
         apply_plan(&plan).expect("apply plan");
 
@@ -899,7 +1011,7 @@ mod tests {
         .expect("env example");
         fs::write(repo.path().join(".gitignore"), "__pycache__/\n").expect("gitignore");
 
-        let plan = plan_repository(repo.path(), Path::new("recipes")).expect("fix plan");
+        let plan = plan_repository(repo.path(), Path::new("recipes"), None).expect("fix plan");
         let env_change = plan
             .changes
             .iter()
@@ -931,7 +1043,7 @@ mod tests {
         fs::write(repo.path().join(".env.example"), "PORT=3000\n").expect("env example");
         fs::write(repo.path().join(".gitignore"), ".env\n").expect("gitignore");
 
-        let plan = plan_repository(repo.path(), Path::new("recipes")).expect("fix plan");
+        let plan = plan_repository(repo.path(), Path::new("recipes"), None).expect("fix plan");
 
         assert!(
             !plan.changes.iter().any(|change| {
@@ -964,7 +1076,7 @@ mod tests {
         .expect("main.go");
         symlink(outside.path(), repo.path().join(".github")).expect("symlink .github");
 
-        let plan = plan_repository(repo.path(), Path::new("recipes")).expect("fix plan");
+        let plan = plan_repository(repo.path(), Path::new("recipes"), None).expect("fix plan");
 
         assert!(
             !plan
@@ -973,5 +1085,48 @@ mod tests {
                 .any(|change| change.path == Path::new(".github/workflows/ci.yml"))
         );
         assert!(plan.deferred.iter().any(|fix| fix.control == "CI/CD"));
+    }
+
+    #[test]
+    fn explicit_aws_cloud_plans_terraform_foundation() {
+        let repo = tempdir().expect("repository");
+        fs::write(repo.path().join("README.md"), "# demo\n").expect("readme");
+        let plan =
+            plan_repository(repo.path(), Path::new("recipes"), Some("aws")).expect("fix plan");
+        for path in [
+            "infra/terraform/main.tf",
+            "infra/terraform/variables.tf",
+            "infra/terraform/README.md",
+        ] {
+            assert!(
+                plan.changes
+                    .iter()
+                    .any(|change| change.path == Path::new(path))
+            );
+        }
+        assert!(!plan.deferred.iter().any(|fix| fix.control == "Terraform"));
+        apply_plan(&plan).expect("apply plan");
+        let main = fs::read_to_string(repo.path().join("infra/terraform/main.tf"))
+            .expect("terraform main");
+        assert!(main.contains("provider \"aws\""));
+    }
+
+    #[test]
+    fn terraform_stays_deferred_without_explicit_cloud() {
+        let repo = tempdir().expect("repository");
+        fs::write(repo.path().join("README.md"), "# demo\n").expect("readme");
+        let plan = plan_repository(repo.path(), Path::new("recipes"), None).expect("fix plan");
+        assert!(
+            plan.deferred
+                .iter()
+                .any(|fix| { fix.control == "Terraform" && fix.reason.contains("--cloud AWS") })
+        );
+    }
+
+    #[test]
+    fn rejects_unsupported_cloud_for_terraform_fix() {
+        let repo = tempdir().expect("repository");
+        let result = plan_repository(repo.path(), Path::new("recipes"), Some("DigitalOcean"));
+        assert!(result.is_err());
     }
 }

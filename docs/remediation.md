@@ -120,3 +120,15 @@ StackPilot remediation follows these rules:
 9. Inspection runs again after apply so the user can see the measurable readiness effect.
 
 Future Terraform, health-check, and CI-repair adapters must preserve this preview/apply boundary and add their own explicit safety checks before they become eligible for automatic remediation.
+
+## Explicit-cloud Terraform remediation
+
+Terraform remains opt-in for existing repositories. StackPilot will not guess a cloud target. Pass one of:
+
+```bash
+stackpilot fix --cloud AWS
+stackpilot fix --cloud Azure
+stackpilot fix --cloud GCP
+```
+
+The command still previews by default. Add `--apply` only after reviewing the plan. When Terraform is missing and the selected cloud is valid, StackPilot can create `infra/terraform/main.tf`, `variables.tf`, and `README.md` from the same tested recipe templates used for greenfield projects. Existing or unrecognized Terraform files are never overwritten. Symlinked target paths are refused.
