@@ -1,18 +1,40 @@
 # StackPilot
 
-StackPilot is a Rust-powered GitHub template and project scaffolding engine for creating consistent, production-minded repositories from reusable recipes.
+StackPilot is a Rust-powered GitHub template and project scaffolding engine for creating consistent, production-minded repositories from a small set of deliberately opinionated golden paths.
+
+## Product philosophy
+
+StackPilot is not a framework picker with hundreds of combinations. It chooses a production default for each supported ecosystem and keeps the generated repositories structurally consistent.
+
+| Language | StackPilot golden path |
+| --- | --- |
+| Rust | Axum |
+| Go | Chi |
+| TypeScript | NestJS |
+| Python | FastAPI |
+| Java | Spring Boot |
+| C# | ASP.NET Core |
+
+For deployable services, StackPilot defaults toward PostgreSQL, AWS, Docker, CI, and Terraform. Advanced automation can still override supported infrastructure choices, but the normal workflow recommends rather than overwhelms.
+
+Every generated service follows the same initial contract: a `/health` endpoint, port `3000`, container support, language-native CI, environment metadata, and optional Terraform infrastructure.
 
 ## GitHub template flow
 
+The lowest-friction path is GitHub Actions:
+
 1. Click **Use this template** on GitHub.
-2. Clone the new repository.
-3. Run:
+2. Open **Actions → Configure StackPilot Template** in the new repository.
+3. Choose the language and adjust infrastructure only when necessary.
+4. Run the workflow. StackPilot previews the plan, generates the repository, and commits the result.
+
+For local interactive setup after cloning:
 
 ```bash
 cargo run -- bootstrap
 ```
 
-StackPilot will detect the repository name, ask for the project type, language, framework, database, cloud, container, CI, and Terraform choices, render the selected recipe directly into the repository, persist the choices in `.stackpilot.toml`, and remove the template-engine source files.
+StackPilot detects the repository name, recommends the golden framework for the selected language, asks only for the remaining deployment decisions, renders the selected recipe directly into the repository, persists the choices in `.stackpilot.toml`, and removes the template-engine source files.
 
 To test bootstrap without removing the engine:
 
@@ -28,16 +50,41 @@ Interactive:
 cargo run -- new
 ```
 
-Or:
+Or create a named project:
 
 ```bash
 cargo run -- new payment-service --recipe base
 ```
 
-For automation:
+For automation, `--framework Auto` resolves to the StackPilot golden path:
 
 ```bash
-cargo run -- new payment-service --recipe base --non-interactive --no-git
+cargo run -- new payment-service \
+  --recipe base \
+  --non-interactive \
+  --kind "Backend API" \
+  --language Go \
+  --framework Auto \
+  --database PostgreSQL \
+  --cloud AWS \
+  --docker true \
+  --ci true \
+  --terraform true
+```
+
+Preview exactly what will be generated without writing files:
+
+```bash
+cargo run -- plan payment-service \
+  --non-interactive \
+  --kind "Backend API" \
+  --language Go \
+  --framework Auto \
+  --database PostgreSQL \
+  --cloud AWS \
+  --docker true \
+  --ci true \
+  --terraform true
 ```
 
 ## Other commands
@@ -51,21 +98,27 @@ cargo run -- doctor
 
 - Native Rust CLI
 - GitHub-template in-place bootstrap
-- Interactive project specification
-- Rust, Go, TypeScript, Python, Java, and C# stack selection
-- Framework, database, cloud, Docker, CI, and Terraform choices
-- TOML recipe manifests
-- MiniJinja rendering
-- Conditional recipe files
-- Path-safe project naming
+- GitHub Actions setup UI
+- Opinionated framework selection with `Auto`
+- Rust/Axum, Go/Chi, TypeScript/NestJS, Python/FastAPI, Java/Spring Boot, and C#/ASP.NET Core golden paths
+- Shared production container and Compose policy
+- Language-native generated CI
+- PostgreSQL-first database profile with MySQL, MongoDB, SQLite, or no database as supported alternatives
+- AWS-first cloud profile with Azure, GCP, or no cloud as supported alternatives
+- Terraform foundation
+- TOML recipe manifests and MiniJinja rendering
+- Compound conditional recipe files
+- Non-destructive scaffold planning
+- Path-safe project and recipe handling
 - Automatic Git initialization for generated projects
 - Recipe discovery and diagnostics
 - Persistent `.stackpilot.toml` project profile
 - Transactional cleanup when project generation fails
+- CI compatibility matrix that generates and builds every golden path
 
 ## Architecture
 
-The StackPilot engine is independent from generated project languages. Recipes own stack-specific output, while the Rust core handles selection, validation, rendering, repository operations, and lifecycle behavior.
+The StackPilot engine is independent from generated project languages. Recipes own stack-specific output, while the Rust core handles opinionated selection, validation, rendering, repository operations, safety, and lifecycle behavior.
 
 ## Development
 
