@@ -19,6 +19,7 @@ const ENGINE_FILES: &[&str] = &[
     "src/doctor.rs",
     "src/bootstrap.rs",
     ".github/workflows/ci.yml",
+    ".github/workflows/bootstrap.yml",
     ".stackpilot-template",
 ];
 

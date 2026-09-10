@@ -66,6 +66,34 @@ impl ProjectSpec {
                 .interact()?
         };
 
+        Self::configured(
+            name, kind, language, framework, database, cloud, docker, ci, terraform,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn configured(
+        name: String,
+        kind: String,
+        language: String,
+        framework: String,
+        database: String,
+        cloud: String,
+        docker: bool,
+        ci: bool,
+        terraform: bool,
+    ) -> Result<Self> {
+        validate_project_name(&name)?;
+        validate_non_empty("project type", &kind)?;
+        validate_non_empty("language", &language)?;
+        validate_non_empty("framework", &framework)?;
+        validate_non_empty("database", &database)?;
+        validate_non_empty("cloud", &cloud)?;
+
+        if terraform && cloud.eq_ignore_ascii_case("None") {
+            bail!("Terraform requires a cloud selection");
+        }
+
         Ok(Self {
             name,
             kind,
@@ -80,18 +108,17 @@ impl ProjectSpec {
     }
 
     pub fn minimal(name: String) -> Result<Self> {
-        validate_project_name(&name)?;
-        Ok(Self {
+        Self::configured(
             name,
-            kind: "Generic".to_string(),
-            language: "Generic".to_string(),
-            framework: "None".to_string(),
-            database: "None".to_string(),
-            cloud: "None".to_string(),
-            docker: false,
-            ci: false,
-            terraform: false,
-        })
+            "Generic".to_string(),
+            "Generic".to_string(),
+            "None".to_string(),
+            "None".to_string(),
+            "None".to_string(),
+            false,
+            false,
+            false,
+        )
     }
 }
 
@@ -131,6 +158,13 @@ fn validate_project_name(name: &str) -> Result<()> {
     Ok(())
 }
 
+fn validate_non_empty(label: &str, value: &str) -> Result<()> {
+    if value.trim().is_empty() {
+        bail!("{label} cannot be empty");
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{ProjectSpec, validate_project_name};
@@ -151,5 +185,21 @@ mod tests {
         let spec = ProjectSpec::minimal("worker".to_string()).expect("valid spec");
         assert_eq!(spec.language, "Generic");
         assert!(!spec.docker);
+    }
+
+    #[test]
+    fn rejects_terraform_without_cloud() {
+        let result = ProjectSpec::configured(
+            "worker".to_string(),
+            "Worker".to_string(),
+            "Rust".to_string(),
+            "None".to_string(),
+            "None".to_string(),
+            "None".to_string(),
+            true,
+            true,
+            true,
+        );
+        assert!(result.is_err());
     }
 }

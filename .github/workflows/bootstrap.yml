@@ -1,0 +1,129 @@
+name: Configure StackPilot Template
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: Project name (leave blank to use repository name)
+        required: false
+        type: string
+      project_kind:
+        description: Project type
+        required: true
+        default: Backend API
+        type: choice
+        options:
+          - Backend API
+          - Frontend
+          - Full Stack
+          - Worker
+          - CLI
+          - Library
+      language:
+        description: Programming language
+        required: true
+        default: Rust
+        type: choice
+        options:
+          - Rust
+          - Go
+          - TypeScript
+          - Python
+          - Java
+          - C#
+      framework:
+        description: Framework (for example Axum, Chi, NestJS, FastAPI, Spring Boot, ASP.NET Core)
+        required: true
+        default: None
+        type: string
+      database:
+        description: Database
+        required: true
+        default: None
+        type: choice
+        options:
+          - None
+          - PostgreSQL
+          - MySQL
+          - SQLite
+          - MongoDB
+      cloud:
+        description: Cloud
+        required: true
+        default: None
+        type: choice
+        options:
+          - None
+          - AWS
+          - Azure
+          - GCP
+      docker:
+        description: Include container foundation
+        required: true
+        default: true
+        type: boolean
+      ci:
+        description: Include CI foundation
+        required: true
+        default: true
+        type: boolean
+      terraform:
+        description: Include Terraform foundation (requires a cloud selection)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Resolve project name
+        id: project
+        env:
+          INPUT_NAME: ${{ inputs.project_name }}
+        run: |
+          if [ -n "$INPUT_NAME" ]; then
+            echo "name=$INPUT_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build StackPilot
+        run: cargo build --release
+
+      - name: Configure repository
+        run: |
+          ./target/release/stackpilot bootstrap \
+            --non-interactive \
+            --name "${{ steps.project.outputs.name }}" \
+            --kind "${{ inputs.project_kind }}" \
+            --language "${{ inputs.language }}" \
+            --framework "${{ inputs.framework }}" \
+            --database "${{ inputs.database }}" \
+            --cloud "${{ inputs.cloud }}" \
+            --docker "${{ inputs.docker }}" \
+            --ci "${{ inputs.ci }}" \
+            --terraform "${{ inputs.terraform }}"
+
+      - name: Commit generated foundation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore: bootstrap project with StackPilot"
+          git push

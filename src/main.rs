@@ -8,7 +8,7 @@ mod spec;
 use std::{env, path::PathBuf};
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 
 use recipe::Recipe;
 use spec::ProjectSpec;
@@ -66,9 +66,41 @@ enum Commands {
         #[arg(long, default_value = "recipes")]
         recipes_dir: PathBuf,
 
-        /// Disable interactive prompts and use safe generic defaults.
+        /// Disable interactive prompts and use values supplied by flags.
         #[arg(long)]
         non_interactive: bool,
+
+        /// Project type used with --non-interactive.
+        #[arg(long, default_value = "Generic")]
+        kind: String,
+
+        /// Programming language used with --non-interactive.
+        #[arg(long, default_value = "Generic")]
+        language: String,
+
+        /// Framework used with --non-interactive.
+        #[arg(long, default_value = "None")]
+        framework: String,
+
+        /// Database used with --non-interactive.
+        #[arg(long, default_value = "None")]
+        database: String,
+
+        /// Cloud used with --non-interactive.
+        #[arg(long, default_value = "None")]
+        cloud: String,
+
+        /// Include container support with --non-interactive.
+        #[arg(long, default_value_t = false, action = ArgAction::Set)]
+        docker: bool,
+
+        /// Include CI support with --non-interactive.
+        #[arg(long, default_value_t = false, action = ArgAction::Set)]
+        ci: bool,
+
+        /// Include Terraform support with --non-interactive.
+        #[arg(long, default_value_t = false, action = ArgAction::Set)]
+        terraform: bool,
 
         /// Preserve the StackPilot engine files after bootstrapping.
         #[arg(long)]
@@ -131,12 +163,22 @@ fn main() -> Result<()> {
             recipe,
             recipes_dir,
             non_interactive,
+            kind,
+            language,
+            framework,
+            database,
+            cloud,
+            docker,
+            ci,
+            terraform,
             keep_engine,
             force,
         } => {
             let name = name.unwrap_or(current_repository_name()?);
             let spec = if non_interactive {
-                ProjectSpec::minimal(name)?
+                ProjectSpec::configured(
+                    name, kind, language, framework, database, cloud, docker, ci, terraform,
+                )?
             } else {
                 ProjectSpec::interactive(Some(name))?
             };
