@@ -268,7 +268,7 @@ fn resolve_recipes_dir_with_executable(
     local_exists: bool,
     executable: Option<PathBuf>,
 ) -> PathBuf {
-    if recipes_dir != PathBuf::from(DEFAULT_RECIPES_DIR) || local_exists {
+    if recipes_dir.as_path() != std::path::Path::new(DEFAULT_RECIPES_DIR) || local_exists {
         return recipes_dir;
     }
 
