@@ -1,6 +1,6 @@
 # Releasing StackPilot
 
-StackPilot releases are created from semantic-version Git tags and published by GitHub Actions.
+StackPilot releases are created from semantic-version Git tags and published by GitHub Actions. The public website is part of the release contract: version, release journey and verified product facts must stay aligned with the CLI.
 
 ## Release contract
 
@@ -22,11 +22,24 @@ Do not prefix release tags with `StackPilot-` or create a differently named GitH
 
 The tag version must exactly match the version in `Cargo.toml`. For example, `version = "0.1.2"` must be released with tag `v0.1.2`.
 
+## Public website metadata
+
+Release-facing website data lives in:
+
+```text
+website/src/data/site.ts
+```
+
+This is the single website source for the current public version, release journey and verified proof points shown across the landing page, navigation, install page and documentation. The website build checks this version against `Cargo.toml` so a stale public version is caught during CI instead of silently shipping.
+
+Only publish statistics that are directly verifiable. Product facts such as supported golden paths, native release targets and completed smoke tests are appropriate. Do not invent download, user, project or adoption counts; add those only when a reliable source exists.
+
 ## Normal release procedure
 
 1. Update the package version in `Cargo.toml` and update `Cargo.lock` if Cargo changes it.
-2. Merge the version change to `main` and confirm CI is green.
-3. Create the release tag from the intended `main` commit:
+2. Update `website/src/data/site.ts` with the same `currentVersion`, append the new release milestone, and refresh any proof point that materially changed.
+3. Merge the release changes to `main` and confirm CI is green, including the website build.
+4. Create the release tag from the intended `main` commit:
 
    ```bash
    git checkout main
@@ -35,7 +48,7 @@ The tag version must exactly match the version in `Cargo.toml`. For example, `ve
    git push origin v0.1.2
    ```
 
-4. The `Release` GitHub Actions workflow will automatically:
+5. The `Release` GitHub Actions workflow will automatically:
    - validate the tag against `Cargo.toml`;
    - build native release binaries;
    - package Windows, Linux, and macOS archives;
@@ -44,6 +57,7 @@ The tag version must exactly match the version in `Cargo.toml`. For example, `ve
    - create the GitHub release;
    - upload all release assets;
    - verify that every expected asset is present.
+6. Run the installer smoke tests below. If a newly claimed platform or workflow is verified, update the website proof points in the next documentation commit so the public story stays evidence-based.
 
 ## Expected release assets
 
