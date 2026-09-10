@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 
 const MAX_SCAN_DEPTH: usize = 6;
 const MAX_TEXT_FILE_SIZE: u64 = 512 * 1024;
@@ -56,6 +56,7 @@ pub struct InspectionReport {
 }
 
 impl InspectionReport {
+    #[cfg(test)]
     fn finding(&self, name: &str) -> Option<&Finding> {
         self.findings.iter().find(|finding| finding.name == name)
     }
@@ -81,7 +82,6 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
     let files = collect_files(&root)?;
     let languages = detect_languages(&root, &files);
     let frameworks = detect_frameworks(&files);
-
     let docker = detect_docker(&root, &files);
     let ci = detect_ci(&root, &files);
     let terraform = detect_terraform(&files);
@@ -90,17 +90,6 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
     let stackpilot_metadata = files
         .iter()
         .any(|path| path.file_name().and_then(|name| name.to_str()) == Some(".stackpilot.toml"));
-
-    let language_detail = if languages.is_empty() {
-        "No supported language marker was detected".to_string()
-    } else {
-        languages.join(", ")
-    };
-    let framework_detail = if frameworks.is_empty() {
-        "No recognized framework marker was detected".to_string()
-    } else {
-        frameworks.join(", ")
-    };
 
     let findings = vec![
         Finding {
@@ -111,10 +100,15 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
             } else {
                 FindingStatus::Passed
             },
-            detail: language_detail,
-            recommendation: languages
-                .is_empty()
-                .then(|| "Add or expose a supported language manifest so StackPilot can identify the runtime.".to_string()),
+            detail: if languages.is_empty() {
+                "No supported language marker was detected".to_string()
+            } else {
+                languages.join(", ")
+            },
+            recommendation: languages.is_empty().then(|| {
+                "Add or expose a supported language manifest so StackPilot can identify the runtime."
+                    .to_string()
+            }),
         },
         Finding {
             category: "Runtime",
@@ -124,10 +118,15 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
             } else {
                 FindingStatus::Passed
             },
-            detail: framework_detail,
-            recommendation: frameworks
-                .is_empty()
-                .then(|| "Expose framework dependencies in the project manifest so StackPilot can identify the application framework.".to_string()),
+            detail: if frameworks.is_empty() {
+                "No recognized framework marker was detected".to_string()
+            } else {
+                frameworks.join(", ")
+            },
+            recommendation: frameworks.is_empty().then(|| {
+                "Expose framework dependencies in the project manifest so StackPilot can identify the application framework."
+                    .to_string()
+            }),
         },
         Finding {
             category: "Runtime",
@@ -154,8 +153,10 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
             } else {
                 "No health/readiness endpoint convention detected".to_string()
             },
-            recommendation: (!health)
-                .then(|| "Add a health endpoint such as /health and wire it into the runtime/deployment checks.".to_string()),
+            recommendation: (!health).then(|| {
+                "Add a health endpoint such as /health and wire it into runtime/deployment checks."
+                    .to_string()
+            }),
         },
         Finding {
             category: "Delivery",
@@ -182,8 +183,10 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
             } else {
                 "No Terraform configuration detected".to_string()
             },
-            recommendation: (terraform == 0)
-                .then(|| "Add infrastructure-as-code when the service owns deployable infrastructure.".to_string()),
+            recommendation: (terraform == 0).then(|| {
+                "Add infrastructure-as-code when the service owns deployable infrastructure."
+                    .to_string()
+            }),
         },
         Finding {
             category: "Configuration",
@@ -271,7 +274,9 @@ fn print_report(report: &InspectionReport) {
         }
     }
 
-    println!("\nReadiness scoring is not enabled yet; this report is deterministic and informational.");
+    println!(
+        "\nReadiness scoring is not enabled yet; this report is deterministic and informational."
+    );
 }
 
 #[derive(Debug)]
@@ -375,14 +380,13 @@ fn detect_languages(root: &Path, files: &[PathBuf]) -> Vec<String> {
     }
 
     if languages.is_empty() {
-        let mut extensions = BTreeSet::new();
-        for path in files {
-            if let Some(extension) = path.extension().and_then(|extension| extension.to_str()) {
-                extensions.insert(extension.to_ascii_lowercase());
-            }
-        }
+        let extensions: BTreeSet<String> = files
+            .iter()
+            .filter_map(|path| path.extension().and_then(|extension| extension.to_str()))
+            .map(str::to_ascii_lowercase)
+            .collect();
 
-        for (extensions_for_language, language) in [
+        for (markers, language) in [
             (&["rs"][..], "Rust"),
             (&["go"][..], "Go"),
             (&["ts", "tsx"][..], "TypeScript"),
@@ -391,7 +395,7 @@ fn detect_languages(root: &Path, files: &[PathBuf]) -> Vec<String> {
             (&["java"][..], "Java"),
             (&["cs"][..], "C#"),
         ] {
-            if extensions_for_language
+            if markers
                 .iter()
                 .any(|extension| extensions.contains(*extension))
             {
@@ -400,7 +404,6 @@ fn detect_languages(root: &Path, files: &[PathBuf]) -> Vec<String> {
         }
     }
 
-    // A root-level TypeScript configuration is a stronger signal than package.json alone.
     if root.join("tsconfig.json").is_file() {
         languages.remove("JavaScript");
         languages.insert("TypeScript".to_string());
@@ -416,7 +419,6 @@ fn detect_frameworks(files: &[PathBuf]) -> Vec<String> {
         let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
             continue;
         };
-
         let relevant = matches!(
             name,
             "Cargo.toml"
@@ -470,35 +472,33 @@ fn detect_docker(root: &Path, files: &[PathBuf]) -> Detection {
     let mut compose_files = Vec::new();
 
     for path in files {
-        let relative = relative_path(root, path);
         let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
             continue;
         };
         let lower = name.to_ascii_lowercase();
 
         if lower == "dockerfile" || lower.starts_with("dockerfile.") {
-            dockerfiles.push(relative.clone());
+            dockerfiles.push(relative_path(root, path));
         }
         if matches!(
             lower.as_str(),
             "compose.yml" | "compose.yaml" | "docker-compose.yml" | "docker-compose.yaml"
         ) {
-            compose_files.push(relative);
+            compose_files.push(relative_path(root, path));
         }
     }
 
-    let detected = !dockerfiles.is_empty() || !compose_files.is_empty();
-    let detail = match (dockerfiles.is_empty(), compose_files.is_empty()) {
-        (false, false) => format!(
-            "Dockerfile and Compose detected ({}, {})",
-            dockerfiles[0], compose_files[0]
-        ),
-        (false, true) => format!("Dockerfile detected ({})", dockerfiles[0]),
-        (true, false) => format!("Compose detected ({})", compose_files[0]),
-        (true, true) => "No Dockerfile or Compose configuration detected".to_string(),
-    };
-
-    Detection { detected, detail }
+    Detection {
+        detected: !dockerfiles.is_empty() || !compose_files.is_empty(),
+        detail: match (dockerfiles.first(), compose_files.first()) {
+            (Some(dockerfile), Some(compose)) => {
+                format!("Dockerfile and Compose detected ({dockerfile}, {compose})")
+            }
+            (Some(dockerfile), None) => format!("Dockerfile detected ({dockerfile})"),
+            (None, Some(compose)) => format!("Compose detected ({compose})"),
+            (None, None) => "No Dockerfile or Compose configuration detected".to_string(),
+        },
+    }
 }
 
 fn detect_ci(root: &Path, files: &[PathBuf]) -> Detection {
@@ -512,10 +512,14 @@ fn detect_ci(root: &Path, files: &[PathBuf]) -> Detection {
         };
 
         if normalized.starts_with(".github/workflows/")
-            && matches!(path.extension().and_then(|extension| extension.to_str()), Some("yml" | "yaml"))
+            && matches!(
+                path.extension().and_then(|extension| extension.to_str()),
+                Some("yml" | "yaml")
+            )
         {
             providers.insert("GitHub Actions");
         }
+
         match name {
             ".gitlab-ci.yml" => {
                 providers.insert("GitLab CI");
@@ -561,15 +565,13 @@ fn detect_health_check(files: &[PathBuf]) -> bool {
     ];
 
     files.iter().any(|path| {
-        if !is_source_or_config_file(path) {
-            return false;
-        }
-        read_small_text(path).is_some_and(|content| {
-            let content = content.to_ascii_lowercase();
-            HEALTH_MARKERS
-                .iter()
-                .any(|marker| content.contains(marker))
-        })
+        is_source_or_config_file(path)
+            && read_small_text(path).is_some_and(|content| {
+                let content = content.to_ascii_lowercase();
+                HEALTH_MARKERS
+                    .iter()
+                    .any(|marker| content.contains(marker))
+            })
     })
 }
 
@@ -589,72 +591,69 @@ fn detect_environment_hygiene(root: &Path, files: &[PathBuf]) -> EnvironmentDete
         .map(|path| relative_path(root, path))
         .collect();
 
-    let committed_env: Vec<String> = files
+    let dotenv_files: Vec<String> = files
         .iter()
         .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some(".env"))
         .map(|path| relative_path(root, path))
         .collect();
 
     let env_ignored = files.iter().any(|path| {
-        if path.file_name().and_then(|name| name.to_str()) != Some(".gitignore") {
-            return false;
-        }
-        read_small_text(path).is_some_and(|content| gitignore_protects_env(&content))
+        path.file_name().and_then(|name| name.to_str()) == Some(".gitignore")
+            && read_small_text(path).is_some_and(|content| gitignore_protects_env(&content))
     });
 
-    if !committed_env.is_empty() {
-        return EnvironmentDetection {
+    match (example_files.first(), env_ignored, dotenv_files.first()) {
+        (Some(example), true, Some(_)) => EnvironmentDetection {
+            status: FindingStatus::Passed,
+            detail: format!("Safe example detected and local .env is ignored ({example})"),
+            recommendation: None,
+        },
+        (Some(example), true, None) => EnvironmentDetection {
+            status: FindingStatus::Passed,
+            detail: format!("Safe example detected and .env is ignored ({example})"),
+            recommendation: None,
+        },
+        (Some(example), false, Some(dotenv)) => EnvironmentDetection {
             status: FindingStatus::Warning,
             detail: format!(
-                "Environment file present in the repository scan ({})",
-                committed_env.join(", ")
+                "Environment example exists, but {dotenv} is not protected by a detected .gitignore rule ({example})"
             ),
             recommendation: Some(
-                "Remove committed .env files, rotate any exposed secrets, ignore .env, and keep a safe .env.example."
-                    .to_string(),
+                "Add .env to .gitignore and verify no secrets have been committed.".to_string(),
             ),
-        };
-    }
-
-    if !example_files.is_empty() && env_ignored {
-        return EnvironmentDetection {
-            status: FindingStatus::Passed,
-            detail: format!(
-                "Example environment file detected and .env is ignored ({})",
-                example_files[0]
-            ),
-            recommendation: None,
-        };
-    }
-
-    if !example_files.is_empty() {
-        return EnvironmentDetection {
+        },
+        (Some(example), false, None) => EnvironmentDetection {
             status: FindingStatus::Warning,
             detail: format!(
-                "Example environment file detected, but .env ignore protection was not found ({})",
-                example_files[0]
+                "Environment example exists, but .env ignore protection was not detected ({example})"
             ),
-            recommendation: Some("Add .env to .gitignore while keeping the example file committed.".to_string()),
-        };
-    }
-
-    if env_ignored {
-        return EnvironmentDetection {
+            recommendation: Some(
+                "Add .env to .gitignore while keeping the safe example file committed.".to_string(),
+            ),
+        },
+        (None, true, Some(_)) | (None, true, None) => EnvironmentDetection {
             status: FindingStatus::Warning,
             detail: ".env is ignored, but no safe example environment file was found".to_string(),
             recommendation: Some(
                 "Add a .env.example containing variable names and safe placeholder values.".to_string(),
             ),
-        };
-    }
-
-    EnvironmentDetection {
-        status: FindingStatus::Missing,
-        detail: "No environment example or .env ignore convention detected".to_string(),
-        recommendation: Some(
-            "Add .env.example and ignore local .env files to document configuration without committing secrets."
-                .to_string(),
-        ),
+        },
+        (None, false, Some(dotenv)) => EnvironmentDetection {
+            status: FindingStatus::Warning,
+            detail: format!("{dotenv} is present without detected .gitignore protection"),
+            recommendation: Some(
+                "Ignore .env, add a safe .env.example, and verify no secrets have been committed."
+                    .to_string(),
+            ),
+        },
+        (None, false, None) => EnvironmentDetection {
+            status: FindingStatus::Missing,
+            detail: "No environment example or .env ignore convention detected".to_string(),
+            recommendation: Some(
+                "Add .env.example and ignore local .env files to document configuration without committing secrets."
+                    .to_string(),
+            ),
+        },
     }
 }
 
@@ -716,7 +715,7 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use super::{FindingStatus, inspect_repository};
+    use super::{inspect_repository, FindingStatus};
 
     #[test]
     fn detects_nestjs_production_foundations() {
@@ -731,6 +730,7 @@ mod tests {
         fs::write(repo.path().join("compose.yaml"), "services: {}").expect("compose");
         fs::write(repo.path().join(".env.example"), "PORT=3000\n").expect("env example");
         fs::write(repo.path().join(".gitignore"), ".env\n").expect("gitignore");
+        fs::write(repo.path().join(".env"), "LOCAL_ONLY=value\n").expect("local env");
         fs::write(repo.path().join(".stackpilot.toml"), "version = 1\n")
             .expect("stackpilot metadata");
 
@@ -811,8 +811,7 @@ mod tests {
         fs::create_dir_all(repo.path().join("target/debug")).expect("target");
         fs::write(repo.path().join("target/debug/generated.rs"), "fn main() {}")
             .expect("generated source");
-        fs::write(repo.path().join("README.md"), "# Empty repository")
-            .expect("readme");
+        fs::write(repo.path().join("README.md"), "# Empty repository").expect("readme");
 
         let report = inspect_repository(repo.path()).expect("inspection");
         assert!(report.languages.is_empty());
@@ -820,11 +819,10 @@ mod tests {
     }
 
     #[test]
-    fn warns_when_dotenv_is_present() {
+    fn warns_when_dotenv_is_not_ignored() {
         let repo = tempdir().expect("repository");
         fs::write(repo.path().join(".env"), "SECRET=example\n").expect("env");
         fs::write(repo.path().join(".env.example"), "SECRET=\n").expect("env example");
-        fs::write(repo.path().join(".gitignore"), ".env\n").expect("gitignore");
 
         let report = inspect_repository(repo.path()).expect("inspection");
         assert_eq!(
