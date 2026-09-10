@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  rust:
+  engine:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,28 +35,6 @@ jobs:
           test -f ci-smoke/.stackpilot.toml
           test -f ci-smoke/docs/architecture.md
 
-      - name: Smoke test Rust Axum golden path
-        run: |
-          cargo run -- new axum-smoke \
-            --recipe base \
-            --non-interactive \
-            --kind "Backend API" \
-            --language Rust \
-            --framework Axum \
-            --database PostgreSQL \
-            --cloud AWS \
-            --docker true \
-            --ci true \
-            --terraform true \
-            --no-git
-          test -f axum-smoke/Cargo.toml
-          test -f axum-smoke/src/main.rs
-          test -f axum-smoke/Dockerfile
-          test -f axum-smoke/compose.yaml
-          test -f axum-smoke/.github/workflows/ci.yml
-          test -f axum-smoke/infra/terraform/main.tf
-          cargo check --manifest-path axum-smoke/Cargo.toml
-
       - name: Build CLI
         run: cargo build
 
@@ -71,3 +49,127 @@ jobs:
           test ! -f .stackpilot-template
           test ! -f Cargo.toml
           test ! -d recipes
+
+  golden-paths:
+    name: golden / ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: Rust
+            framework: Axum
+            slug: rust-smoke
+          - language: Go
+            framework: Chi
+            slug: go-smoke
+          - language: TypeScript
+            framework: NestJS
+            slug: nest-smoke
+          - language: Python
+            framework: FastAPI
+            slug: fastapi-smoke
+          - language: Java
+            framework: Spring Boot
+            slug: spring-smoke
+          - language: C#
+            framework: ASP.NET Core
+            slug: dotnet-smoke
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust for StackPilot
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Go
+        if: matrix.language == 'Go'
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+          cache: false
+
+      - name: Set up Node.js
+        if: matrix.language == 'TypeScript'
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Set up Python
+        if: matrix.language == 'Python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Set up Java
+        if: matrix.language == 'Java'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up .NET
+        if: matrix.language == 'C#'
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build StackPilot
+        run: cargo build --release
+
+      - name: Generate golden path
+        run: |
+          ./target/release/stackpilot new "${{ matrix.slug }}" \
+            --recipe base \
+            --non-interactive \
+            --kind "Backend API" \
+            --language "${{ matrix.language }}" \
+            --framework "${{ matrix.framework }}" \
+            --database PostgreSQL \
+            --cloud AWS \
+            --docker true \
+            --ci true \
+            --terraform true \
+            --no-git
+          test -f "${{ matrix.slug }}/Dockerfile"
+          test -f "${{ matrix.slug }}/compose.yaml"
+          test -f "${{ matrix.slug }}/.github/workflows/ci.yml"
+          test -f "${{ matrix.slug }}/infra/terraform/main.tf"
+
+      - name: Validate Rust output
+        if: matrix.language == 'Rust'
+        run: cargo check --manifest-path "${{ matrix.slug }}/Cargo.toml"
+
+      - name: Validate Go output
+        if: matrix.language == 'Go'
+        working-directory: ${{ matrix.slug }}
+        run: |
+          go mod tidy
+          go test ./...
+          go vet ./...
+
+      - name: Validate NestJS output
+        if: matrix.language == 'TypeScript'
+        working-directory: ${{ matrix.slug }}
+        run: |
+          npm install
+          npm run build
+
+      - name: Validate FastAPI output
+        if: matrix.language == 'Python'
+        working-directory: ${{ matrix.slug }}
+        run: |
+          python -m pip install -e '.[dev]'
+          pytest -q
+
+      - name: Validate Spring Boot output
+        if: matrix.language == 'Java'
+        working-directory: ${{ matrix.slug }}
+        run: mvn -B verify
+
+      - name: Validate ASP.NET Core output
+        if: matrix.language == 'C#'
+        working-directory: ${{ matrix.slug }}
+        run: dotnet build app.csproj --configuration Release
