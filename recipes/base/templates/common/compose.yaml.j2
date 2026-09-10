@@ -1,0 +1,65 @@
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      SERVER_PORT: "3000"
+      ASPNETCORE_URLS: http://+:3000
+{% if database == "PostgreSQL" %}      DATABASE_URL: postgresql://stackpilot:stackpilot@postgres:5432/{{ project_name | replace("-", "_") }}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: stackpilot
+      POSTGRES_PASSWORD: stackpilot
+      POSTGRES_DB: {{ project_name | replace("-", "_") }}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stackpilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
+{% elif database == "MySQL" %}      DATABASE_URL: mysql://stackpilot:stackpilot@mysql:3306/{{ project_name | replace("-", "_") }}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: {{ project_name | replace("-", "_") }}
+      MYSQL_USER: stackpilot
+      MYSQL_PASSWORD: stackpilot
+      MYSQL_ROOT_PASSWORD: stackpilot-root
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
+{% elif database == "MongoDB" %}      DATABASE_URL: mongodb://mongo:27017/{{ project_name | replace("-", "_") }}
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:8
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
+{% endif %}
