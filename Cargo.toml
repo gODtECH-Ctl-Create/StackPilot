@@ -1,0 +1,17 @@
+[package]
+name = "stackpilot"
+version = "0.1.0"
+edition = "2024"
+description = "A Rust-powered project scaffolding engine for production-minded repositories"
+license = "MIT"
+repository = "https://github.com/gODtECH-Ctl-Create/StackPilot"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+minijinja = { version = "2", features = ["loader"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+
+[dev-dependencies]
+tempfile = "3"
