@@ -106,6 +106,27 @@ enum Commands {
         no_git: bool,
     },
 
+    /// Preview the files that a recipe would generate without writing anything.
+    Plan {
+        /// Project name used while resolving template destinations.
+        name: Option<String>,
+
+        /// Recipe name found under the recipes directory.
+        #[arg(short, long, default_value = "base")]
+        recipe: String,
+
+        /// Directory that contains StackPilot recipes.
+        #[arg(long, default_value = "recipes")]
+        recipes_dir: PathBuf,
+
+        /// Disable interactive prompts and use values supplied by flags.
+        #[arg(long)]
+        non_interactive: bool,
+
+        #[command(flatten)]
+        spec: SpecOptions,
+    },
+
     /// Convert a repository created with "Use this template" into a project.
     Bootstrap {
         /// Project name. Defaults to the current repository directory name.
@@ -164,13 +185,7 @@ fn main() -> Result<()> {
             spec,
             no_git,
         } => {
-            let project_spec = if non_interactive {
-                let name = name.context("--non-interactive requires a project name")?;
-                spec.into_project_spec(name)?
-            } else {
-                ProjectSpec::interactive(name)?
-            };
-
+            let project_spec = resolve_spec(name, non_interactive, spec)?;
             let destination =
                 scaffold::create_project(&project_spec, &recipe, &recipes_dir, &output)?;
 
@@ -184,6 +199,21 @@ fn main() -> Result<()> {
                 "Stack: {} / {} / {}",
                 project_spec.language, project_spec.framework, project_spec.database
             );
+        }
+        Commands::Plan {
+            name,
+            recipe,
+            recipes_dir,
+            non_interactive,
+            spec,
+        } => {
+            let project_spec = resolve_spec(name, non_interactive, spec)?;
+            let files = scaffold::plan_project(&project_spec, &recipe, &recipes_dir)?;
+
+            println!("StackPilot plan for {} ({recipe})", project_spec.name);
+            for path in files {
+                println!("  + {}", path.display());
+            }
         }
         Commands::Bootstrap {
             name,
@@ -217,6 +247,19 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn resolve_spec(
+    name: Option<String>,
+    non_interactive: bool,
+    spec: SpecOptions,
+) -> Result<ProjectSpec> {
+    if non_interactive {
+        let name = name.context("--non-interactive requires a project name")?;
+        spec.into_project_spec(name)
+    } else {
+        ProjectSpec::interactive(name)
+    }
 }
 
 fn current_repository_name() -> Result<String> {
