@@ -34,8 +34,8 @@ struct SpecOptions {
     #[arg(long, default_value = "Generic")]
     language: String,
 
-    /// Framework used with --non-interactive.
-    #[arg(long, default_value = "None")]
+    /// Framework used with --non-interactive. Auto chooses StackPilot's golden path.
+    #[arg(long, default_value = "Auto")]
     framework: String,
 
     /// Database used with --non-interactive.
