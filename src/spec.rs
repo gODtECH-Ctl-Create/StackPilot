@@ -25,7 +25,14 @@ impl ProjectSpec {
         };
         validate_project_name(&name)?;
 
-        let kinds = ["Backend API", "Frontend", "Full Stack", "Worker", "CLI", "Library"];
+        let kinds = [
+            "Backend API",
+            "Frontend",
+            "Full Stack",
+            "Worker",
+            "CLI",
+            "Library",
+        ];
         let kind = select(&theme, "Project type", &kinds)?;
 
         let languages = ["Rust", "Go", "TypeScript", "Python", "Java", "C#"];
