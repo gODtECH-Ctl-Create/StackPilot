@@ -1,0 +1,36 @@
+name: Patch health inspector
+
+on:
+  push:
+    branches:
+      - feat/fix-health
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/fix-health
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Patch inspector
+        run: python .github/scripts/patch_health_inspector.py
+      - name: Validate
+        run: |
+          cargo fmt --all
+          cargo check --locked
+          cargo clippy --locked --all-targets --all-features -- -D warnings
+          cargo test --locked --all
+      - name: Commit inspector fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/inspect.rs
+          git commit -m 'fix: require application source for health readiness'
+          git push origin HEAD:feat/fix-health
