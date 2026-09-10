@@ -2,8 +2,23 @@
 
 Generated with **StackPilot** using the `{{ recipe_name }}` recipe.
 
-{{ recipe_description }}
+## Project profile
+
+| Setting | Selection |
+| --- | --- |
+| Project type | {{ project_kind }} |
+| Language | {{ language }} |
+| Framework | {{ framework }} |
+| Database | {{ database }} |
+| Cloud | {{ cloud }} |
+| Containers | {{ docker }} |
+| CI | {{ ci }} |
+| Terraform | {{ terraform }} |
 
 ## Getting started
 
-Add your application code, then extend this foundation with the StackPilot recipes your project needs.
+Add stack-specific source code and commands for this project. The choices made during scaffolding are stored in `.stackpilot.toml` so future StackPilot operations can understand the repository.
+
+## Repository standards
+
+This foundation includes environment-variable conventions, contribution guidance, security guidance, architecture documentation, and a pull-request template.

@@ -1,5 +1,5 @@
 name = "base"
-description = "Minimal production-minded project foundation"
+description = "Language-agnostic production-minded repository foundation"
 
 [[files]]
 template = "README.md.j2"
@@ -12,3 +12,27 @@ destination = ".gitignore"
 [[files]]
 template = "env.example.j2"
 destination = ".env.example"
+
+[[files]]
+template = "stackpilot.toml.j2"
+destination = ".stackpilot.toml"
+
+[[files]]
+template = "editorconfig.j2"
+destination = ".editorconfig"
+
+[[files]]
+template = "CONTRIBUTING.md.j2"
+destination = "CONTRIBUTING.md"
+
+[[files]]
+template = "SECURITY.md.j2"
+destination = "SECURITY.md"
+
+[[files]]
+template = "architecture.md.j2"
+destination = "docs/architecture.md"
+
+[[files]]
+template = "PULL_REQUEST_TEMPLATE.md.j2"
+destination = ".github/PULL_REQUEST_TEMPLATE.md"
