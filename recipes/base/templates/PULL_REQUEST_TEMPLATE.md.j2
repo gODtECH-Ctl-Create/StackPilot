@@ -1,14 +1,15 @@
-## What changed?
+## Summary
 
-Describe the change and why it is needed.
+What changed and why?
 
 ## Validation
 
-- [ ] I tested the affected behavior locally.
-- [ ] I did not commit secrets or credentials.
-- [ ] I updated documentation/configuration where necessary.
-- [ ] I considered deployment or rollback impact.
+- [ ] Application build/tests pass
+- [ ] `/health` still works for deployable services
+- [ ] Container changes were validated when applicable
+- [ ] Infrastructure changes were planned/reviewed when applicable
+- [ ] No secrets or environment-specific credentials were committed
 
 ## Operational impact
 
-Describe any infrastructure, CI/CD, database, security, or deployment impact. Write `None` if not applicable.
+Describe deployment, database, cloud, migration, rollback, or observability impact. Write `None` when there is no operational change.
