@@ -321,11 +321,8 @@ mod tests {
         fs::create_dir(&recipes).expect("create recipes directory");
         let executable = install.path().join("stackpilot.exe");
 
-        let resolved = resolve_recipes_dir_with_executable(
-            PathBuf::from("recipes"),
-            false,
-            Some(executable),
-        );
+        let resolved =
+            resolve_recipes_dir_with_executable(PathBuf::from("recipes"), false, Some(executable));
 
         assert_eq!(resolved, recipes);
     }
