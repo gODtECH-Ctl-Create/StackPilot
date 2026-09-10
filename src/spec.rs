@@ -106,20 +106,6 @@ impl ProjectSpec {
             terraform,
         })
     }
-
-    pub fn minimal(name: String) -> Result<Self> {
-        Self::configured(
-            name,
-            "Generic".to_string(),
-            "Generic".to_string(),
-            "None".to_string(),
-            "None".to_string(),
-            "None".to_string(),
-            false,
-            false,
-            false,
-        )
-    }
 }
 
 fn select(theme: &ColorfulTheme, prompt: &str, items: &[&str]) -> Result<String> {
@@ -181,10 +167,21 @@ mod tests {
     }
 
     #[test]
-    fn creates_minimal_non_interactive_spec() {
-        let spec = ProjectSpec::minimal("worker".to_string()).expect("valid spec");
-        assert_eq!(spec.language, "Generic");
-        assert!(!spec.docker);
+    fn creates_configured_non_interactive_spec() {
+        let spec = ProjectSpec::configured(
+            "worker".to_string(),
+            "Worker".to_string(),
+            "Go".to_string(),
+            "Chi".to_string(),
+            "None".to_string(),
+            "None".to_string(),
+            false,
+            true,
+            false,
+        )
+        .expect("valid spec");
+        assert_eq!(spec.language, "Go");
+        assert!(spec.ci);
     }
 
     #[test]
