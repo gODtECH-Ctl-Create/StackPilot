@@ -2,20 +2,25 @@
 
 StackPilot is a Rust-powered GitHub template and project scaffolding engine for creating consistent, production-minded repositories from reusable recipes.
 
-## Current capabilities
+## GitHub template flow
 
-- Interactive project setup
-- Language/framework/database/cloud selection
-- TOML recipe manifests
-- MiniJinja rendering
-- Conditional recipe files
-- Safe project-name validation
-- Automatic Git initialization
-- Recipe discovery
-- Environment/recipe diagnostics
-- Language-agnostic generated repository metadata
+1. Click **Use this template** on GitHub.
+2. Clone the new repository.
+3. Run:
 
-## Create a project
+```bash
+cargo run -- bootstrap
+```
+
+StackPilot will detect the repository name, ask for the project type, language, framework, database, cloud, container, CI, and Terraform choices, render the selected recipe directly into the repository, persist the choices in `.stackpilot.toml`, and remove the template-engine source files.
+
+To test bootstrap without removing the engine:
+
+```bash
+cargo run -- bootstrap --keep-engine
+```
+
+## Create a separate project
 
 Interactive:
 
@@ -23,7 +28,7 @@ Interactive:
 cargo run -- new
 ```
 
-Or provide the name directly:
+Or:
 
 ```bash
 cargo run -- new payment-service --recipe base
@@ -42,11 +47,25 @@ cargo run -- recipes
 cargo run -- doctor
 ```
 
+## Current capabilities
+
+- Native Rust CLI
+- GitHub-template in-place bootstrap
+- Interactive project specification
+- Rust, Go, TypeScript, Python, Java, and C# stack selection
+- Framework, database, cloud, Docker, CI, and Terraform choices
+- TOML recipe manifests
+- MiniJinja rendering
+- Conditional recipe files
+- Path-safe project naming
+- Automatic Git initialization for generated projects
+- Recipe discovery and diagnostics
+- Persistent `.stackpilot.toml` project profile
+- Transactional cleanup when project generation fails
+
 ## Architecture
 
-The Rust CLI is deliberately independent from generated project languages. Recipes can target Rust, Go, TypeScript, Python, Java, C#, or additional stacks without changing the core engine.
-
-Generated repositories persist their selected project profile in `.stackpilot.toml`, allowing future StackPilot operations to understand and evolve the project.
+The StackPilot engine is independent from generated project languages. Recipes own stack-specific output, while the Rust core handles selection, validation, rendering, repository operations, and lifecycle behavior.
 
 ## Development
 

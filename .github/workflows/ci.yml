@@ -28,3 +28,24 @@ jobs:
 
       - name: Test
         run: cargo test --all
+
+      - name: Smoke test project creation
+        run: |
+          cargo run -- new ci-smoke --recipe base --non-interactive --no-git
+          test -f ci-smoke/.stackpilot.toml
+          test -f ci-smoke/docs/architecture.md
+
+      - name: Build CLI
+        run: cargo build
+
+      - name: Smoke test GitHub template bootstrap
+        run: |
+          mkdir -p /tmp/stackpilot-bootstrap
+          git archive HEAD | tar -x -C /tmp/stackpilot-bootstrap
+          cp target/debug/stackpilot /tmp/stackpilot-bin
+          cd /tmp/stackpilot-bootstrap
+          /tmp/stackpilot-bin bootstrap --recipe base --non-interactive
+          test -f .stackpilot.toml
+          test ! -f .stackpilot-template
+          test ! -f Cargo.toml
+          test ! -d recipes

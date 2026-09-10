@@ -19,11 +19,10 @@ pub fn create_project(
         bail!("destination already exists: {}", destination.display());
     }
 
-    let (recipe, recipe_dir) = Recipe::load(recipes_dir, recipe_name)?;
     fs::create_dir_all(&destination)
         .with_context(|| format!("failed to create {}", destination.display()))?;
 
-    if let Err(error) = render_files(spec, &recipe, &recipe_dir, &destination) {
+    if let Err(error) = render_in_place(spec, recipe_name, recipes_dir, &destination) {
         let _ = fs::remove_dir_all(&destination);
         return Err(error);
     }
@@ -31,13 +30,24 @@ pub fn create_project(
     Ok(destination)
 }
 
+pub fn render_in_place(
+    spec: &ProjectSpec,
+    recipe_name: &str,
+    recipes_dir: &Path,
+    destination: &Path,
+) -> Result<Vec<PathBuf>> {
+    let (recipe, recipe_dir) = Recipe::load(recipes_dir, recipe_name)?;
+    render_files(spec, &recipe, &recipe_dir, destination)
+}
+
 fn render_files(
     spec: &ProjectSpec,
     recipe: &Recipe,
     recipe_dir: &Path,
     destination: &Path,
-) -> Result<()> {
+) -> Result<Vec<PathBuf>> {
     let mut env = Environment::new();
+    let mut generated = Vec::new();
 
     for file in &recipe.files {
         if let Some(condition) = &file.when
@@ -67,16 +77,17 @@ fn render_files(
             recipe_description => recipe.description.clone().unwrap_or_default(),
         })?;
 
-        let relative_destination = render_destination(&file.destination, &spec.name);
-        let target = destination.join(relative_destination);
+        let relative_destination = PathBuf::from(render_destination(&file.destination, &spec.name));
+        let target = destination.join(&relative_destination);
         if let Some(parent) = target.parent() {
             fs::create_dir_all(parent)?;
         }
         fs::write(&target, rendered)
             .with_context(|| format!("failed to write {}", target.display()))?;
+        generated.push(relative_destination);
     }
 
-    Ok(())
+    Ok(generated)
 }
 
 fn matches_condition(condition: &str, spec: &ProjectSpec) -> Result<bool> {

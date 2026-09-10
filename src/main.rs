@@ -1,10 +1,11 @@
+mod bootstrap;
 mod doctor;
 mod git;
 mod recipe;
 mod scaffold;
 mod spec;
 
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -49,6 +50,33 @@ enum Commands {
         /// Do not initialize a Git repository in the generated project.
         #[arg(long)]
         no_git: bool,
+    },
+
+    /// Convert a repository created with "Use this template" into a project.
+    Bootstrap {
+        /// Project name. Defaults to the current repository directory name.
+        #[arg(short, long)]
+        name: Option<String>,
+
+        /// Recipe name found under the recipes directory.
+        #[arg(short, long, default_value = "base")]
+        recipe: String,
+
+        /// Directory that contains StackPilot recipes.
+        #[arg(long, default_value = "recipes")]
+        recipes_dir: PathBuf,
+
+        /// Disable interactive prompts and use safe generic defaults.
+        #[arg(long)]
+        non_interactive: bool,
+
+        /// Preserve the StackPilot engine files after bootstrapping.
+        #[arg(long)]
+        keep_engine: bool,
+
+        /// Allow bootstrapping a repository without the template marker.
+        #[arg(long)]
+        force: bool,
     },
 
     /// List available StackPilot recipes.
@@ -98,6 +126,23 @@ fn main() -> Result<()> {
                 spec.language, spec.framework, spec.database
             );
         }
+        Commands::Bootstrap {
+            name,
+            recipe,
+            recipes_dir,
+            non_interactive,
+            keep_engine,
+            force,
+        } => {
+            let name = name.unwrap_or(current_repository_name()?);
+            let spec = if non_interactive {
+                ProjectSpec::minimal(name)?
+            } else {
+                ProjectSpec::interactive(Some(name))?
+            };
+
+            bootstrap::run(&spec, &recipe, &recipes_dir, keep_engine, force)?;
+        }
         Commands::Recipes { recipes_dir } => {
             let recipes = Recipe::discover(&recipes_dir)?;
             if recipes.is_empty() {
@@ -112,4 +157,13 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn current_repository_name() -> Result<String> {
+    let current = env::current_dir().context("failed to determine current directory")?;
+    current
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(str::to_string)
+        .context("current directory does not have a valid UTF-8 name")
 }
