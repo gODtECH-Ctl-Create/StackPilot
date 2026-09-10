@@ -1,0 +1,141 @@
+name: Installed Release Smoke
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to verify, for example v0.1.2. Leave blank to test latest.'
+        required: false
+        type: string
+  pull_request:
+    paths:
+      - '.github/workflows/release-smoke.yml'
+      - '.github/workflows/release.yml'
+      - 'scripts/install.sh'
+      - 'scripts/install.ps1'
+      - 'docs/releasing.md'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-smoke-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installed-release:
+    name: install smoke / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux x86_64
+          - os: macos-15-intel
+            label: macOS x86_64
+          - os: macos-latest
+            label: macOS arm64
+          - os: windows-latest
+            label: Windows x86_64
+    env:
+      STACKPILOT_TEST_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event_name == 'workflow_dispatch' && inputs.tag || '' }}
+
+    steps:
+      - name: Checkout installer scripts
+        uses: actions/checkout@v5
+
+      - name: Install and verify on Linux/macOS
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          export STACKPILOT_INSTALL_DIR="$RUNNER_TEMP/stackpilot-bin"
+          if [[ -n "$STACKPILOT_TEST_TAG" ]]; then
+            export STACKPILOT_VERSION="$STACKPILOT_TEST_TAG"
+          else
+            unset STACKPILOT_VERSION || true
+          fi
+
+          sh scripts/install.sh
+          export PATH="$STACKPILOT_INSTALL_DIR:$PATH"
+
+          cd "$RUNNER_TEMP"
+          stackpilot --version
+          stackpilot doctor
+          stackpilot recipes | grep -q '^base - '
+          stackpilot plan release-smoke --recipe base --non-interactive > stackpilot-plan.txt
+          grep -q '.stackpilot.toml' stackpilot-plan.txt
+
+          rm -rf release-smoke-project
+          stackpilot new release-smoke-project \
+            --recipe base \
+            --non-interactive \
+            --kind "Backend API" \
+            --language TypeScript \
+            --framework Auto \
+            --database PostgreSQL \
+            --cloud AWS \
+            --docker true \
+            --ci true \
+            --terraform true \
+            --no-git
+
+          test -f release-smoke-project/.stackpilot.toml
+          test -f release-smoke-project/Dockerfile
+          test -f release-smoke-project/.github/workflows/ci.yml
+          test -f release-smoke-project/infra/terraform/main.tf
+
+      - name: Install and verify on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $env:STACKPILOT_INSTALL_DIR = Join-Path $env:RUNNER_TEMP "stackpilot-bin"
+          if ($env:STACKPILOT_TEST_TAG) {
+            $env:STACKPILOT_VERSION = $env:STACKPILOT_TEST_TAG
+          } else {
+            Remove-Item Env:STACKPILOT_VERSION -ErrorAction SilentlyContinue
+          }
+
+          & .\scripts\install.ps1
+          $env:Path = "$env:STACKPILOT_INSTALL_DIR;$env:Path"
+
+          Push-Location $env:RUNNER_TEMP
+          try {
+            stackpilot --version
+            stackpilot doctor
+            $recipes = stackpilot recipes
+            if (-not ($recipes -match '^base - ')) {
+              throw "Installed release did not expose the base recipe."
+            }
+
+            stackpilot plan release-smoke --recipe base --non-interactive | Out-File -Encoding utf8 stackpilot-plan.txt
+            if (-not (Select-String -Path stackpilot-plan.txt -Pattern '.stackpilot.toml' -SimpleMatch -Quiet)) {
+              throw "Installed release plan did not include .stackpilot.toml."
+            }
+
+            Remove-Item release-smoke-project -Recurse -Force -ErrorAction SilentlyContinue
+            stackpilot new release-smoke-project --recipe base --non-interactive --kind "Backend API" --language TypeScript --framework Auto --database PostgreSQL --cloud AWS --docker true --ci true --terraform true --no-git
+
+            $expected = @(
+              'release-smoke-project/.stackpilot.toml',
+              'release-smoke-project/Dockerfile',
+              'release-smoke-project/.github/workflows/ci.yml',
+              'release-smoke-project/infra/terraform/main.tf'
+            )
+            foreach ($path in $expected) {
+              if (-not (Test-Path $path -PathType Leaf)) {
+                throw "Installed release failed project-generation check: missing $path"
+              }
+            }
+          }
+          finally {
+            Pop-Location
+          }
