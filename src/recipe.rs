@@ -33,10 +33,7 @@ impl Recipe {
         let recipe_dir = recipes_dir.join(recipe_name);
         let manifest_path = recipe_dir.join("recipe.toml");
         let raw = fs::read_to_string(&manifest_path).with_context(|| {
-            format!(
-                "failed to read recipe manifest {}",
-                manifest_path.display()
-            )
+            format!("failed to read recipe manifest {}", manifest_path.display())
         })?;
 
         let recipe: Recipe = toml::from_str(&raw).with_context(|| {
@@ -50,8 +47,9 @@ impl Recipe {
     }
 
     pub fn discover(recipes_dir: &Path) -> Result<Vec<RecipeSummary>> {
-        let entries = fs::read_dir(recipes_dir)
-            .with_context(|| format!("failed to read recipes directory {}", recipes_dir.display()))?;
+        let entries = fs::read_dir(recipes_dir).with_context(|| {
+            format!("failed to read recipes directory {}", recipes_dir.display())
+        })?;
 
         let mut recipes = Vec::new();
 
@@ -69,7 +67,9 @@ impl Recipe {
             let (recipe, _) = Self::load(recipes_dir, &recipe_name)?;
             recipes.push(RecipeSummary {
                 name: recipe.name,
-                description: recipe.description.unwrap_or_else(|| "No description".to_string()),
+                description: recipe
+                    .description
+                    .unwrap_or_else(|| "No description".to_string()),
             });
         }
 
