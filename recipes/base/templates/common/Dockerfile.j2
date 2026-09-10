@@ -1,4 +1,20 @@
-{% if language == "Go" %}FROM golang:1.27-alpine AS build
+{% if language == "Rust" %}FROM rust:1.98-slim-bookworm AS build
+WORKDIR /app
+COPY Cargo.toml ./
+COPY src ./src
+RUN cargo build --release
+RUN cp target/release/{{ project_name }} /tmp/app
+
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /tmp/app /usr/local/bin/app
+USER 10001:10001
+EXPOSE 3000
+ENV PORT=3000
+ENTRYPOINT ["/usr/local/bin/app"]
+{% elif language == "Go" %}FROM golang:1.27-alpine AS build
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
