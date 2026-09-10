@@ -14,9 +14,9 @@ on:
         type: choice
         options:
           - Backend API
-          - Frontend
-          - Full Stack
           - Worker
+          - Full Stack
+          - Frontend
           - CLI
           - Library
       language:
@@ -32,33 +32,33 @@ on:
           - Java
           - C#
       framework:
-        description: Framework (for example Axum, Chi, NestJS, FastAPI, Spring Boot, ASP.NET Core)
+        description: Framework override. Leave Auto to use StackPilot's blessed framework for the language.
         required: true
-        default: None
+        default: Auto
         type: string
       database:
-        description: Database
+        description: Database (PostgreSQL is the default golden path)
         required: true
-        default: None
+        default: PostgreSQL
         type: choice
         options:
-          - None
           - PostgreSQL
+          - None
           - MySQL
-          - SQLite
           - MongoDB
+          - SQLite
       cloud:
-        description: Cloud
+        description: Cloud target (AWS is the default golden path)
         required: true
-        default: None
+        default: AWS
         type: choice
         options:
-          - None
           - AWS
+          - None
           - Azure
           - GCP
       docker:
-        description: Include container foundation
+        description: Include production container foundation
         required: true
         default: true
         type: boolean
@@ -68,9 +68,9 @@ on:
         default: true
         type: boolean
       terraform:
-        description: Include Terraform foundation (requires a cloud selection)
+        description: Include Terraform foundation
         required: true
-        default: false
+        default: true
         type: boolean
 
 permissions:
@@ -101,6 +101,20 @@ jobs:
 
       - name: Build StackPilot
         run: cargo build --release
+
+      - name: Preview generated repository
+        run: |
+          ./target/release/stackpilot plan \
+            --non-interactive \
+            "${{ steps.project.outputs.name }}" \
+            --kind "${{ inputs.project_kind }}" \
+            --language "${{ inputs.language }}" \
+            --framework "${{ inputs.framework }}" \
+            --database "${{ inputs.database }}" \
+            --cloud "${{ inputs.cloud }}" \
+            --docker "${{ inputs.docker }}" \
+            --ci "${{ inputs.ci }}" \
+            --terraform "${{ inputs.terraform }}"
 
       - name: Configure repository
         run: |
