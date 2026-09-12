@@ -18,6 +18,7 @@
 
 <p>
   <a href="https://godtech-ctl-create.github.io/StackPilot/">Website</a> ·
+  <a href="https://godtech-ctl-create.github.io/StackPilot/ecosystem/">Ecosystem</a> ·
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-golden-paths">Golden paths</a> ·
   <a href="#-architecture">Architecture</a> ·
@@ -238,6 +239,31 @@ CI                   language-native validation/build pipeline
 .stackpilot.toml      persisted project profile
 Terraform            optional infrastructure foundation
 ```
+
+---
+
+## 🔗 Ecosystem
+
+StackPilot is part of a deliberately separated gODtECH toolchain:
+
+```text
+FORGE      → orchestrate / govern / verify
+StackPilot → scaffold / generate / validate a golden path
+Steward    → inspect / explain / maintain repository health
+```
+
+**gODtECH FORGE** may coordinate StackPilot when a governed workflow needs a supported project foundation. **gODtECH Steward** may then assess the generated or existing repository independently and return deterministic health evidence.
+
+StackPilot does not depend on Steward, and Steward does not depend on StackPilot. StackPilot's existing `--steward-report` adapter is observational and does not execute Steward remediation or fold Steward findings into `readiness-v1`.
+
+Learn more:
+
+- [StackPilot ecosystem page](https://godtech-ctl-create.github.io/StackPilot/ecosystem/)
+- [Steward repository](https://github.com/gODtECH-Ctl-Create/gODtECH-Steward)
+- [Steward npm package](https://www.npmjs.com/package/@godtech/steward)
+- [Steward v0.1.0](https://github.com/gODtECH-Ctl-Create/gODtECH-Steward/releases/tag/v0.1.0)
+- [Steward integration contract](./docs/steward-integration.md)
+- [Ecosystem boundary documentation](./docs/ecosystem.md)
 
 ---
 
