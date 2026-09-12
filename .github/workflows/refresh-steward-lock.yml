@@ -1,0 +1,34 @@
+name: Refresh Steward adapter lockfile
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout adapter branch
+        uses: actions/checkout@v5
+        with:
+          ref: feat/steward-adapter
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Refresh lockfile
+        run: cargo generate-lockfile
+
+      - name: Commit lockfile
+        run: |
+          if git diff --quiet -- Cargo.lock; then
+            echo "Cargo.lock is already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.lock
+          git commit -m "build: refresh Cargo.lock for Steward adapter"
+          git push origin feat/steward-adapter
