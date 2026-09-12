@@ -28,10 +28,10 @@ StackPilot may consume Steward's public `schemaVersion: 1` scan result. It must 
 
 ## Near-term
 
-- Complete the optional Steward report adapter and end-to-end verification.
-- Document the integration contract and privacy boundary.
-- Keep locked, reproducible Rust builds.
-- Continue strengthening golden-path generation and stack-aware remediation.
+- [x] Complete the optional Steward report adapter and end-to-end verification.
+- [x] Document the integration contract and privacy boundary.
+- [x] Keep locked, reproducible Rust builds.
+- [ ] Continue strengthening golden-path generation and stack-aware remediation.
 
 ## Later
 
@@ -45,3 +45,13 @@ StackPilot may consume Steward's public `schemaVersion: 1` scan result. It must 
 - Reimplementing Steward rules.
 - Making Steward a StackPilot runtime dependency.
 - Folding Steward health directly into `readiness-v1` without a separately versioned model and explicit architectural decision.
+
+## Completed integration
+
+StackPilot now supports:
+
+```bash
+stackpilot inspect . --steward-report steward-report.json
+```
+
+The adapter validates the Steward identity/version contract, displays safe health summaries, leaves `readiness-v1` unchanged, and never executes Steward remediation. The integration is local, offline-friendly, and independently deployable.
