@@ -1,7 +1,8 @@
 name: Refresh Steward adapter lockfile
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [feat/steward-adapter]
 
 permissions:
   contents: write
