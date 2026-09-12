@@ -118,7 +118,7 @@ pub fn print_summary(report: &StewardReport) {
 
 #[cfg(test)]
 mod tests {
-    use super::{STEWARD_TOOL, STEWARD_VERSION, STEWART_SCHEMA_VERSION, load};
+    use super::{STEWARD_SCHEMA_VERSION, STEWARD_TOOL, STEWARD_VERSION, load};
     use std::fs;
 
     #[test]
@@ -143,7 +143,7 @@ mod tests {
                     "ruleCounts": {{}},
                     "rulePacks": [{{"id":"core","version":2}}]
                 }}"#,
-                STEWART_SCHEMA_VERSION, STEWARD_TOOL, STEWARD_VERSION
+                STEWARD_SCHEMA_VERSION, STEWARD_TOOL, STEWARD_VERSION
             ),
         )
         .expect("write report");
