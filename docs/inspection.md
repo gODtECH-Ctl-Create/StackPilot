@@ -109,3 +109,13 @@ An ignored local `.env` file is normal developer behavior and is not treated as 
 `readiness-v1` is deliberately small. It scores only controls that the current deterministic inspection layer can support reliably. Security scanning, SBOMs, dependency update automation, image scanning and more advanced operability checks are separate roadmap stages; they can extend a future versioned readiness model without silently changing the meaning of `readiness-v1`.
 
 `stackpilot inspect` still does not modify repository files, infer architecture from runtime behavior, or use AI/LLMs to judge repositories. Automated remediation comes after the readiness model.
+
+## Optional gODtECH Steward integration
+
+StackPilot can display a local gODtECH Steward scan alongside its own readiness result without changing `readiness-v1`:
+
+```bash
+stackpilot inspect . --steward-report steward-report.json
+```
+
+The Steward report must use the versioned `schemaVersion: 1` contract. StackPilot treats Steward as an optional observational source and does not execute Steward remediation or reimplement its generic housekeeping rules. See [`steward-integration.md`](./steward-integration.md) for the contract and privacy boundary.
