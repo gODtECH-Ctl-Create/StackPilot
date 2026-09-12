@@ -83,7 +83,11 @@ pub fn print_summary(report: &StewardReport) {
     println!("Findings: {}", report.findings.len());
     println!(
         "Fixable findings: {}",
-        report.findings.iter().filter(|finding| finding.fixable).count()
+        report
+            .findings
+            .iter()
+            .filter(|finding| finding.fixable)
+            .count()
     );
 
     let mut severities = std::collections::BTreeMap::<&str, usize>::new();
@@ -114,7 +118,7 @@ pub fn print_summary(report: &StewardReport) {
 
 #[cfg(test)]
 mod tests {
-    use super::{STEWART_SCHEMA_VERSION, STEWARD_TOOL, STEWARD_VERSION, load};
+    use super::{load, STEWARD_TOOL, STEWARD_VERSION, STEWART_SCHEMA_VERSION};
     use std::fs;
 
     #[test]
@@ -163,6 +167,10 @@ mod tests {
         .expect("write report");
 
         let error = load(&path).expect_err("schema should be rejected");
-        assert!(error.to_string().contains("unsupported Steward schemaVersion"));
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported Steward schemaVersion")
+        );
     }
 }
