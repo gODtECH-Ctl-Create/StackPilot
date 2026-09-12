@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="./docs/assets/stackpilot-hero.svg" alt="StackPilot static project scaffolding header" width="100%" />
+<img src="https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/docs/assets/stackpilot-hero.svg" alt="StackPilot project scaffolding header" width="100%" />
 
 <p>
   <a href="https://github.com/gODtECH-Ctl-Create/StackPilot/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/gODtECH-Ctl-Create/StackPilot/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI status" /></a>
@@ -21,6 +21,7 @@
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-golden-paths">Golden paths</a> ·
   <a href="#-architecture">Architecture</a> ·
+  <a href="#-what-you-get">What you get</a> ·
   <a href="#-ecosystem">Ecosystem</a> ·
   <a href="#-development">Development</a>
 </p>
@@ -185,6 +186,25 @@ flowchart LR
 ```
 
 The engine stays independent from generated project languages. Recipes own stack-specific output; the Rust core owns selection, validation, rendering, repository operations, safety, and lifecycle behavior.
+
+---
+
+## ✨ What you get
+
+| Area | StackPilot provides |
+| --- | --- |
+| **Scaffolding** | Native Rust CLI, template bootstrap, interactive and non-interactive project generation |
+| **Opinionated defaults** | `Auto` framework resolution, PostgreSQL-first database profile, AWS-first cloud profile |
+| **Delivery** | Docker policy, Compose support, language-native CI, optional Terraform foundation |
+| **Recipes** | TOML manifests, MiniJinja rendering, compound conditional recipe files |
+| **Safety** | Non-destructive planning, path-safe generation, transactional cleanup on failure |
+| **Repository lifecycle** | Git initialization, `.stackpilot.toml` project profile, template-engine cleanup |
+| **Quality** | Recipe diagnostics plus CI compatibility coverage across every golden path |
+| **Distribution** | Cross-platform release workflow and one-command installer scripts |
+
+Supported alternatives include **MySQL, MongoDB, SQLite, or no database**, plus **Azure, GCP, or no cloud** where the recipe supports them.
+
+<a href="#readme-top">↑ back to top</a>
 
 ---
 
