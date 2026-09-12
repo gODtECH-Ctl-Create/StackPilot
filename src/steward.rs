@@ -13,6 +13,7 @@ pub struct StewardReport {
     pub schema_version: u8,
     pub tool: String,
     pub version: u8,
+    #[serde(rename = "healthScore")]
     pub health_score: u8,
     pub findings: Vec<StewardFinding>,
     #[serde(default, rename = "rulePacks")]
@@ -164,13 +165,13 @@ mod tests {
                 STEWARD_TOOL, STEWARD_VERSION
             ),
         )
-        .expect("write report");
+        .expect("write incompatible report");
 
         let error = load(&path).expect_err("schema should be rejected");
         assert!(
             error
                 .to_string()
-                .contains("unsupported Steward schemaVersion")
+                .contains("unsupported Steward schemaVersion 2")
         );
     }
 }
