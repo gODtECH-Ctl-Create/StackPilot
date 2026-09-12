@@ -118,7 +118,7 @@ pub fn print_summary(report: &StewardReport) {
 
 #[cfg(test)]
 mod tests {
-    use super::{load, STEWARD_TOOL, STEWARD_VERSION, STEWART_SCHEMA_VERSION};
+    use super::{STEWARD_TOOL, STEWARD_VERSION, STEWART_SCHEMA_VERSION, load};
     use std::fs;
 
     #[test]
