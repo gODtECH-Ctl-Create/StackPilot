@@ -2,6 +2,10 @@
 
 StackPilot can optionally consume a machine-readable scan produced by [gODtECH Steward](https://github.com/gODtECH-Ctl-Create/gODtECH-Steward).
 
+The current public Steward release is [`@godtech/steward@0.1.0`](https://www.npmjs.com/package/@godtech/steward), and its scan result is versioned as `schemaVersion: 1`.
+
+See [`docs/ecosystem.md`](./ecosystem.md) for the broader StackPilot, Steward, and FORGE boundary.
+
 ## Why the integration exists
 
 The two tools own different responsibilities:
@@ -16,7 +20,7 @@ StackPilot does not reimplement Steward rules and does not include Steward findi
 Generate a Steward report from the repository:
 
 ```bash
-steward scan . --json > steward-report.json
+npx @godtech/steward@0.1.0 scan . --json > steward-report.json
 ```
 
 Then inspect the repository with StackPilot and display the Steward result alongside the StackPilot readiness report:
