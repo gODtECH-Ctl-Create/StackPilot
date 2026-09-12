@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="460" viewBox="0 0 1400 460" role="img" aria-labelledby="title desc">
+<title id="title">StackPilot</title>
+<desc id="desc">Static StackPilot header showing production-minded scaffolding and golden paths.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#080b14"/><stop offset="0.55" stop-color="#0d1120"/><stop offset="1" stop-color="#11172a"/></linearGradient>
+</defs>
+<rect width="1400" height="460" fill="url(#bg)"/>
+<rect x="0" y="0" width="1400" height="460" fill="#8bffb0" opacity="0.025"/>
+<rect x="70" y="64" width="1260" height="320" rx="28" fill="#090d17" stroke="#ffffff" stroke-opacity="0.16"/>
+<rect x="92" y="84" width="1216" height="34" rx="12" fill="#11172a" stroke="#ffffff" stroke-opacity="0.10"/>
+<circle cx="114" cy="101" r="4" fill="#ff5f57"/><circle cx="131" cy="101" r="4" fill="#febc2e"/><circle cx="148" cy="101" r="4" fill="#28c840"/>
+<text x="174" y="106" fill="#68738b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">STACKPILOT / GOLDEN-PATH ENGINE</text>
+<rect x="42" y="132" width="132" height="132" rx="26" fill="#0d1421" stroke="#8bffb0" stroke-width="2" stroke-opacity="0.75"/>
+<rect x="70" y="160" width="76" height="76" rx="18" fill="#8bffb0"/>
+<text x="108" y="208" text-anchor="middle" fill="#07110a" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="900">SP</text>
+<circle cx="150" cy="160" r="6" fill="#b7baff"/>
+<text x="208" y="156" fill="#8bffb0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" letter-spacing="2">PRODUCTION-MINDED SCAFFOLDING</text>
+<text x="208" y="226" fill="#eef1fa" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="850">StackPilot</text>
+<text x="208" y="257" fill="#9ca8bf" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">one command → one opinionated repository → ready to build</text>
+<rect x="208" y="285" width="608" height="82" rx="15" fill="#080b14" stroke="#ffffff" stroke-opacity="0.12"/>
+<text x="226" y="312" fill="#8bffb0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">$</text>
+<text x="244" y="312" fill="#e6ebf6" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">stackpilot new payment-service --recipe base</text>
+<text x="226" y="341" fill="#68738b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">✓ framework selected   ✓ Docker   ✓ CI   ✓ Terraform</text>
+<rect x="226" y="353" width="560" height="3" rx="1.5" fill="#182235"/><rect x="226" y="353" width="330" height="3" rx="1.5" fill="#8bffb0"/>
+<rect x="1000" y="132" width="214" height="216" rx="20" fill="#0d1220" stroke="#8d91ff" stroke-opacity="0.55"/>
+<text x="1020" y="162" fill="#68738b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10">GOLDEN PATHS</text>
+<text x="1020" y="201" fill="#f4f7ff" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="800">6</text>
+<g fill="#9ca8bf" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11">
+<text x="1020" y="226">Rust       → Axum</text><text x="1020" y="249">Go         → Chi</text><text x="1020" y="272">TypeScript → NestJS</text><text x="1020" y="295">Python     → FastAPI</text><text x="1020" y="318">Java       → Spring</text><text x="1020" y="341">C#         → ASP.NET</text></g>
+<text x="112" y="410" fill="#5f6b82" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" letter-spacing="1">RUST CORE • RECIPE-DRIVEN • DOCKER • CI • TERRAFORM • AWS-FIRST • POSTGRESQL-FIRST</text>
+<text x="700" y="444" text-anchor="middle" fill="#71809d" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" letter-spacing="4">SCAFFOLD / VALIDATE / GENERATE / SHIP</text>
+</svg>
