@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="./docs/assets/stackpilot-hero.svg" alt="StackPilot animated project scaffolding hero" width="100%" />
+<img src="./docs/assets/stackpilot-hero.svg" alt="StackPilot static project scaffolding header" width="100%" />
 
 <p>
   <a href="https://github.com/gODtECH-Ctl-Create/StackPilot/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/gODtECH-Ctl-Create/StackPilot/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI status" /></a>
@@ -21,6 +21,7 @@
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-golden-paths">Golden paths</a> ·
   <a href="#-architecture">Architecture</a> ·
+  <a href="#-ecosystem">Ecosystem</a> ·
   <a href="#-development">Development</a>
 </p>
 
@@ -187,20 +188,40 @@ The engine stays independent from generated project languages. Recipes own stack
 
 ---
 
-## ✨ What you get
+## 🧩 Ecosystem
 
-| Area | StackPilot provides |
-| --- | --- |
-| **Scaffolding** | Native Rust CLI, template bootstrap, interactive and non-interactive project generation |
-| **Opinionated defaults** | `Auto` framework resolution, PostgreSQL-first database profile, AWS-first cloud profile |
-| **Delivery** | Docker policy, Compose support, language-native CI, optional Terraform foundation |
-| **Recipes** | TOML manifests, MiniJinja rendering, compound conditional recipe files |
-| **Safety** | Non-destructive planning, path-safe generation, transactional cleanup on failure |
-| **Repository lifecycle** | Git initialization, `.stackpilot.toml` project profile, template-engine cleanup |
-| **Quality** | Recipe diagnostics plus CI compatibility coverage across every golden path |
-| **Distribution** | Cross-platform release workflow and one-command installer scripts |
+StackPilot, gODtECH FORGE, and gODtECH Steward are independent products with deliberately separated responsibilities.
 
-Supported alternatives include **MySQL, MongoDB, SQLite, or no database**, plus **Azure, GCP, or no cloud** where the recipe supports them.
+```text
+                         FORGE
+               ORCHESTRATE / GOVERN / VERIFY
+                            |
+              +-------------+-------------+
+              |                           |
+              v                           v
+         StackPilot                    Steward
+          BUILD IT                 KEEP IT HEALTHY
+              |                           |
+              +-------------+-------------+
+                            v
+                       TARGET PROJECT
+```
+
+**StackPilot** owns project scaffolding, golden paths, recipe rendering, generated-project validation, and stack-aware readiness.
+
+**Steward** owns deterministic repository housekeeping, health findings, stable scan/report contracts, and conservative remediation.
+
+**FORGE** owns AI-assisted engineering orchestration, bounded context, risk classification, approvals, resumable workflows, evidence-aware delivery, and cross-tool governance.
+
+StackPilot can optionally consume a versioned Steward scan report as observational input. It does not copy Steward rules, invoke Steward remediation, or fold Steward health into `readiness-v1`.
+
+FORGE may orchestrate StackPilot and Steward through their public interfaces when a workflow needs both project scaffolding and repository-health evidence.
+
+> **Boundary rule:** golden-path and stack-aware semantics belong in StackPilot; generic repository housekeeping belongs in Steward; cross-product workflow and governance belong in FORGE.
+
+See the full [ecosystem overview](./docs/ecosystem.md) and the [Steward integration contract](./docs/steward-integration.md).
+
+<a href="#readme-top">↑ back to top</a>
 
 ---
 
