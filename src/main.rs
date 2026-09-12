@@ -7,6 +7,7 @@ mod readiness;
 mod recipe;
 mod scaffold;
 mod spec;
+mod steward;
 
 use std::{env, path::PathBuf};
 
@@ -171,6 +172,10 @@ enum Commands {
         /// Exit non-zero when readiness is below this 0-100 threshold.
         #[arg(long, value_name = "SCORE")]
         fail_below: Option<u8>,
+
+        /// Optional gODtECH Steward scan result to display alongside readiness.
+        #[arg(long, value_name = "FILE")]
+        steward_report: Option<PathBuf>,
     },
 
     /// Preview or apply safe deterministic fixes to an existing repository.
@@ -271,8 +276,17 @@ fn main() -> Result<()> {
 
             bootstrap::run(&project_spec, &recipe, &recipes_dir, keep_engine, force)?;
         }
-        Commands::Inspect { path, fail_below } => {
-            readiness::run(&path, fail_below)?;
+        Commands::Inspect {
+            path,
+            fail_below,
+            steward_report,
+        } => {
+            let readiness_result = readiness::run(&path, fail_below);
+            if let Some(report_path) = steward_report {
+                let report = steward::load(&report_path)?;
+                steward::print_summary(&report);
+            }
+            readiness_result?;
         }
         Commands::Fix {
             path,
