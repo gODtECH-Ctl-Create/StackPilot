@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{Context, Result, bail};
 
-use crate::security;
+use crate::{deployment, security};
 
 const MAX_SCAN_DEPTH: usize = 6;
 const MAX_TEXT_FILE_SIZE: u64 = 512 * 1024;
@@ -76,6 +76,9 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
     let stackpilot_metadata = files
         .iter()
         .any(|path| path.file_name().and_then(|name| name.to_str()) == Some(".stackpilot.toml"));
+    let deployment_recommendation =
+        deployment::recommendation(&root, &languages, &frameworks, docker.detected);
+    let ecs_foundation = deployment::foundation_detected(&root, deployment::AWS_ECS_FARGATE);
 
     let mut findings = vec![
         Finding {
@@ -200,6 +203,29 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
             }),
         },
     ];
+    if ecs_foundation {
+        findings.push(Finding {
+            category: "Infrastructure",
+            name: "Deployment target",
+            status: FindingStatus::Passed,
+            detail: "AWS ECS/Fargate foundation detected".to_string(),
+            recommendation: None,
+        });
+    } else if let Some(recommendation) = deployment_recommendation {
+        findings.push(Finding {
+            category: "Infrastructure",
+            name: "Deployment target",
+            status: FindingStatus::Warning,
+            detail: format!(
+                "Recommended: {} — {}",
+                recommendation.label, recommendation.reason
+            ),
+            recommendation: Some(format!(
+                "Preview the recommended foundation with `stackpilot fix . --deployment {}`.",
+                recommendation.target
+            )),
+        });
+    }
     findings.extend(security::inspect(&root)?);
 
     Ok(InspectionReport {

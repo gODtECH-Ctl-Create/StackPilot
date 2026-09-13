@@ -6,6 +6,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 
 use crate::{
+    deployment,
     inspect::{self, FindingStatus, InspectionReport},
     readiness, scaffold,
     spec::ProjectSpec,
@@ -79,9 +80,16 @@ pub fn run(
     recipes_dir: &Path,
     cloud: Option<&str>,
     security_baseline: bool,
+    deployment_target: Option<&str>,
     apply: bool,
 ) -> Result<()> {
-    let plan = plan_repository_with_options(root, recipes_dir, cloud, security_baseline)?;
+    let plan = plan_repository_with_options(
+        root,
+        recipes_dir,
+        cloud,
+        security_baseline,
+        deployment_target,
+    )?;
     print_plan(&plan, apply);
 
     if !apply {
@@ -116,7 +124,7 @@ pub fn run(
 
 #[cfg(test)]
 pub fn plan_repository(root: &Path, recipes_dir: &Path, cloud: Option<&str>) -> Result<FixPlan> {
-    plan_repository_with_options(root, recipes_dir, cloud, false)
+    plan_repository_with_options(root, recipes_dir, cloud, false, None)
 }
 
 fn plan_repository_with_options(
@@ -124,6 +132,7 @@ fn plan_repository_with_options(
     recipes_dir: &Path,
     cloud: Option<&str>,
     security_baseline: bool,
+    deployment_target: Option<&str>,
 ) -> Result<FixPlan> {
     if !root.exists() {
         bail!("repository path does not exist: {}", root.display());
@@ -144,14 +153,36 @@ fn plan_repository_with_options(
     if security_baseline {
         plan_security_baseline(&root, &report, recipes_dir, &mut changes)?;
     }
+    let deployment_target = deployment::normalize_target(deployment_target)?;
+    let cloud = if let Some(target) = deployment_target {
+        let required_cloud = deployment::required_cloud(target);
+        if let Some(explicit_cloud) = cloud
+            && !explicit_cloud.eq_ignore_ascii_case(required_cloud)
+        {
+            bail!(
+                "deployment target '{target}' requires {required_cloud}; --cloud {explicit_cloud} conflicts with that target"
+            );
+        }
+        Some(required_cloud)
+    } else {
+        cloud
+    };
     let cloud = normalize_cloud(cloud)?;
-    let deferred = plan_stack_fixes(
+    let mut deferred = plan_stack_fixes(
         &root,
         &report,
         recipes_dir,
         cloud,
         &mut changes,
         &mut updates,
+    )?;
+    plan_deployment_fix(
+        &root,
+        &report,
+        recipes_dir,
+        deployment_target,
+        &mut changes,
+        &mut deferred,
     )?;
     plan_metadata_fix(&root, &report, cloud, &mut changes)?;
 
@@ -379,6 +410,111 @@ fn plan_stack_fixes(
     }
 
     Ok(deferred)
+}
+
+fn plan_deployment_fix(
+    root: &Path,
+    report: &InspectionReport,
+    recipes_dir: &Path,
+    deployment_target: Option<&str>,
+    changes: &mut Vec<PlannedChange>,
+    deferred: &mut Vec<DeferredFix>,
+) -> Result<()> {
+    let Some(target) = deployment_target else {
+        return Ok(());
+    };
+
+    let profile = match verified_stack_profile(root, report) {
+        Ok(profile) => profile,
+        Err(reason) => {
+            deferred.push(DeferredFix {
+                control: "Deployment target",
+                reason: format!(
+                    "deployment generation requires a verified golden-path stack: {reason}"
+                ),
+            });
+            return Ok(());
+        }
+    };
+
+    if !recipes_dir.is_dir() {
+        deferred.push(DeferredFix {
+            control: "Deployment target",
+            reason: format!(
+                "StackPilot recipes were not found at {}; pass --recipes-dir or reinstall StackPilot",
+                recipes_dir.display()
+            ),
+        });
+        return Ok(());
+    }
+
+    let docker_available = finding_status(report, "Docker") == Some(FindingStatus::Passed)
+        || changes
+            .iter()
+            .any(|change| change.path == Path::new("Dockerfile"));
+    if !docker_available {
+        deferred.push(DeferredFix {
+            control: "Deployment target",
+            reason: "AWS ECS/Fargate requires a Docker foundation; StackPilot could not verify or safely plan one"
+                .to_string(),
+        });
+        return Ok(());
+    }
+
+    if finding_status(report, "Terraform") == Some(FindingStatus::Passed)
+        && !deployment::existing_terraform_supports_aws(root)?
+    {
+        deferred.push(DeferredFix {
+            control: "Deployment target",
+            reason: "existing Terraform does not expose AWS provider intent; refusing to mix an ECS/Fargate foundation into unknown infrastructure"
+                .to_string(),
+        });
+        return Ok(());
+    }
+
+    let files = deployment::foundation_files(target);
+    let existing = files
+        .iter()
+        .filter(|relative| path_entry_exists(&root.join(relative)))
+        .count();
+    if existing == files.len() {
+        return Ok(());
+    }
+    if existing > 0 {
+        deferred.push(DeferredFix {
+            control: "Deployment target",
+            reason: "a partial StackPilot ECS/Fargate foundation already exists; refusing to fill around infrastructure that may have been edited"
+                .to_string(),
+        });
+        return Ok(());
+    }
+
+    for relative in files {
+        let relative = Path::new(relative);
+        if let Some(path) = first_symlink_ancestor(root, relative)? {
+            bail!(
+                "refusing to create {} because its target path contains a symlink at {}",
+                relative.display(),
+                path.display()
+            );
+        }
+        changes.push(PlannedChange {
+            path: relative.to_path_buf(),
+            kind: ChangeKind::Create,
+            description: format!(
+                "add the {} deployment foundation for {} / {}",
+                target, profile.language, profile.framework
+            ),
+            content: deployment::render_foundation_file(
+                recipes_dir,
+                target,
+                relative,
+                &profile.project_name,
+            )?,
+        });
+    }
+
+    Ok(())
 }
 
 fn plan_health_fix(
@@ -1525,9 +1661,14 @@ mod tests {
         )
         .expect("main.go");
 
-        let plan =
-            super::plan_repository_with_options(repo.path(), Path::new("recipes"), None, true)
-                .expect("fix plan");
+        let plan = super::plan_repository_with_options(
+            repo.path(),
+            Path::new("recipes"),
+            None,
+            true,
+            None,
+        )
+        .expect("fix plan");
 
         for path in [".github/workflows/security.yml", ".github/dependabot.yml"] {
             assert!(

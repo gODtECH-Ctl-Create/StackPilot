@@ -1,4 +1,5 @@
 mod bootstrap;
+mod deployment;
 mod doctor;
 mod fix;
 mod git;
@@ -197,6 +198,10 @@ enum Commands {
         #[arg(long)]
         security: bool,
 
+        /// Add an explicit deployment foundation. Currently supported: aws-ecs-fargate.
+        #[arg(long, value_name = "TARGET")]
+        deployment: Option<String>,
+
         /// Write the planned safe changes. Without this flag, fix is a dry-run preview.
         #[arg(long)]
         apply: bool,
@@ -298,10 +303,18 @@ fn main() -> Result<()> {
             recipes_dir,
             cloud,
             security,
+            deployment,
             apply,
         } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
-            fix::run(&path, &recipes_dir, cloud.as_deref(), security, apply)?;
+            fix::run(
+                &path,
+                &recipes_dir,
+                cloud.as_deref(),
+                security,
+                deployment.as_deref(),
+                apply,
+            )?;
         }
         Commands::Recipes { recipes_dir } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
