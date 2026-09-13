@@ -1,0 +1,125 @@
+name: Patch health runtime source detection
+
+on:
+  push:
+    branches:
+      - feat/fix-health
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/fix-health
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Patch runtime source detector
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/inspect.rs')
+          text = path.read_text()
+          old = '''fn is_application_source_file(path: &Path) -> bool {
+              let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
+                  return false;
+              };
+
+              matches!(
+                  extension.to_ascii_lowercase().as_str(),
+                  "rs" | "go" | "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "py" | "java" | "cs"
+              )
+          }
+          '''
+          new = '''fn is_application_source_file(path: &Path) -> bool {
+              let normalized = path.to_string_lossy().replace('\\\\', "/").to_ascii_lowercase();
+              if normalized
+                  .split('/')
+                  .any(|component| matches!(component, "test" | "tests" | "__tests__"))
+              {
+                  return false;
+              }
+
+              let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+                  return false;
+              };
+              let file_name = file_name.to_ascii_lowercase();
+              if file_name.starts_with("test_")
+                  || file_name.contains(".test.")
+                  || file_name.contains(".spec.")
+                  || file_name.ends_with("_test.go")
+                  || file_name.ends_with("_test.rs")
+                  || file_name.ends_with("test.java")
+                  || file_name.ends_with("tests.java")
+                  || file_name.ends_with("tests.cs")
+              {
+                  return false;
+              }
+
+              let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
+                  return false;
+              };
+
+              matches!(
+                  extension.to_ascii_lowercase().as_str(),
+                  "rs" | "go" | "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "py" | "java" | "cs"
+              )
+          }
+          '''
+          if old not in text:
+              raise SystemExit('application source helper not found')
+          text = text.replace(old, new, 1)
+
+          idx = text.rfind('\n}')
+          if idx == -1:
+              raise SystemExit('test module end not found')
+          test = '''
+
+              #[test]
+              fn health_reference_in_test_source_does_not_replace_runtime_endpoint() {
+                  let repo = tempdir().expect("repository");
+                  fs::create_dir_all(repo.path().join("tests")).expect("tests");
+                  fs::write(
+                      repo.path().join("tests/test_health.py"),
+                      "def test_health():\\n    path = '/health'\\n",
+                  )
+                  .expect("test source");
+                  fs::write(
+                      repo.path().join("app.py"),
+                      "def main():\\n    return 'ok'\\n",
+                  )
+                  .expect("runtime source");
+
+                  let report = inspect_repository(repo.path()).expect("inspection");
+                  assert_eq!(
+                      report.finding("Health check").expect("health finding").status,
+                      FindingStatus::Missing
+                  );
+              }
+          '''
+          text = text[:idx] + test + text[idx:]
+          path.write_text(text)
+          PY
+
+      - name: Validate
+        run: |
+          cargo fmt --all
+          cargo check --locked
+          cargo clippy --locked --all-targets --all-features -- -D warnings
+          cargo test --locked --all
+
+      - name: Commit runtime detector fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/inspect.rs
+          git commit -m 'fix: exclude tests from health readiness detection'
+          git push origin HEAD:feat/fix-health
