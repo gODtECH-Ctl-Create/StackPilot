@@ -1,0 +1,49 @@
+name: Create v0.2.0 tag helper
+
+on:
+  push:
+    branches:
+      - release/v0.2.0
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate immutable release target
+        shell: bash
+        env:
+          EXPECTED_SHA: 4aa70083dcb3e4a1bf69c75fee63b5dc1f393e2c
+          RELEASE_TAG: v0.2.0
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          if [[ "$actual" != "$EXPECTED_SHA" ]]; then
+            echo "Refusing to tag: main moved from expected release commit $EXPECTED_SHA to $actual" >&2
+            exit 1
+          fi
+          grep -q '^version = "0.2.0"$' Cargo.toml
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Refusing to recreate existing tag $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+      - name: Create and push annotated release tag
+        shell: bash
+        env:
+          RELEASE_TAG: v0.2.0
+        run: |
+          set -euo pipefail
+          git config user.name 'gODtECH-Ctl-Create'
+          git config user.email '203571096+gODtECH-Ctl-Create@users.noreply.github.com'
+          git tag -a "$RELEASE_TAG" -m "StackPilot $RELEASE_TAG"
+          git push origin "refs/tags/$RELEASE_TAG"
