@@ -1,0 +1,38 @@
+name: Dispatch v0.2.0 release helper
+
+on:
+  push:
+    branches:
+      - release/v0.2.0
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  dispatch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify release tag exists at intended commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: 4aa70083dcb3e4a1bf69c75fee63b5dc1f393e2c
+          RELEASE_TAG: v0.2.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_object="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+          commit_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object" --jq '.object.sha')"
+          if [[ "$commit_sha" != "$EXPECTED_SHA" ]]; then
+            echo "Refusing release dispatch: $RELEASE_TAG resolves to $commit_sha, expected $EXPECTED_SHA" >&2
+            exit 1
+          fi
+
+      - name: Dispatch canonical Release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag=v0.2.0
