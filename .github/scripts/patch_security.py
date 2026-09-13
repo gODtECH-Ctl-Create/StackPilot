@@ -38,7 +38,7 @@ text = text.replace(
     1,
 )
 old_plan = '''pub fn plan_repository(root: &Path, recipes_dir: &Path, cloud: Option<&str>) -> Result<FixPlan> {\n    if !root.exists() {'''
-new_plan = '''pub fn plan_repository(root: &Path, recipes_dir: &Path, cloud: Option<&str>) -> Result<FixPlan> {\n    plan_repository_with_options(root, recipes_dir, cloud, false)\n}\n\nfn plan_repository_with_options(\n    root: &Path,\n    recipes_dir: &Path,\n    cloud: Option<&str>,\n    security_baseline: bool,\n) -> Result<FixPlan> {\n    if !root.exists() {'''
+new_plan = '''#[cfg(test)]\npub fn plan_repository(root: &Path, recipes_dir: &Path, cloud: Option<&str>) -> Result<FixPlan> {\n    plan_repository_with_options(root, recipes_dir, cloud, false)\n}\n\nfn plan_repository_with_options(\n    root: &Path,\n    recipes_dir: &Path,\n    cloud: Option<&str>,\n    security_baseline: bool,\n) -> Result<FixPlan> {\n    if !root.exists() {'''
 if old_plan not in text:
     raise SystemExit("plan_repository signature not found")
 text = text.replace(old_plan, new_plan, 1)
