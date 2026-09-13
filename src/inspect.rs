@@ -595,6 +595,33 @@ fn gitignore_protects_env(content: &str) -> bool {
 }
 
 fn is_application_source_file(path: &Path) -> bool {
+    let normalized = path
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_ascii_lowercase();
+    if normalized
+        .split('/')
+        .any(|component| matches!(component, "test" | "tests" | "__tests__"))
+    {
+        return false;
+    }
+
+    let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let file_name = file_name.to_ascii_lowercase();
+    if file_name.starts_with("test_")
+        || file_name.contains(".test.")
+        || file_name.contains(".spec.")
+        || file_name.ends_with("_test.go")
+        || file_name.ends_with("_test.rs")
+        || file_name.ends_with("test.java")
+        || file_name.ends_with("tests.java")
+        || file_name.ends_with("tests.cs")
+    {
+        return false;
+    }
+
     let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
         return false;
     };
@@ -762,6 +789,28 @@ func main() {}
 ",
         )
         .expect("source");
+
+        let report = inspect_repository(repo.path()).expect("inspection");
+        assert_eq!(
+            report
+                .finding("Health check")
+                .expect("health finding")
+                .status,
+            FindingStatus::Missing
+        );
+    }
+
+    #[test]
+    fn health_reference_in_test_source_does_not_replace_runtime_endpoint() {
+        let repo = tempdir().expect("repository");
+        fs::create_dir_all(repo.path().join("tests")).expect("tests");
+        fs::write(
+            repo.path().join("tests/test_health.py"),
+            "def test_health():\n    path = '/health'\n",
+        )
+        .expect("test source");
+        fs::write(repo.path().join("app.py"), "def main():\n    return 'ok'\n")
+            .expect("runtime source");
 
         let report = inspect_repository(repo.path()).expect("inspection");
         assert_eq!(
