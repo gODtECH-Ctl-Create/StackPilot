@@ -1,0 +1,29 @@
+output "ecr_repository_url" {
+  description = "ECR repository created for {{ project_name }} images"
+  value       = aws_ecr_repository.app.repository_url
+}
+
+output "ecs_cluster_name" {
+  description = "ECS cluster running {{ project_name }}"
+  value       = aws_ecs_cluster.app.name
+}
+
+output "ecs_service_name" {
+  description = "ECS service name for {{ project_name }}"
+  value       = aws_ecs_service.app.name
+}
+
+output "load_balancer_dns_name" {
+  description = "Public application load balancer DNS name"
+  value       = aws_lb.app.dns_name
+}
+
+output "task_execution_role_arn" {
+  description = "IAM execution role used by the ECS task runtime"
+  value       = aws_iam_role.ecs_task_execution.arn
+}
+
+output "task_role_arn" {
+  description = "Application task role to extend with least-privilege AWS permissions"
+  value       = aws_iam_role.ecs_task.arn
+}
