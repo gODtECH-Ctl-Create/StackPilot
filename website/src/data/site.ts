@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export const site = {
-  currentVersion: '0.1.2',
-  releaseDate: '10 September 2026',
+  currentVersion: '0.2.0',
+  releaseDate: '13 September 2026',
   goldenPathCount: 6,
   nativeReleaseTargetCount: 4,
   proofPoints: [
@@ -18,14 +18,14 @@ export const site = {
       detail: 'Windows, Linux, macOS Intel and macOS Apple Silicon',
     },
     {
-      value: '6/6',
-      label: 'CI validated',
-      detail: 'Every supported backend golden path is generated and checked in CI',
+      value: '100',
+      label: 'readiness points',
+      detail: 'Versioned readiness-v1 across runtime, delivery, infrastructure, security and operability',
     },
     {
-      value: 'Windows',
-      label: 'end-to-end verified',
-      detail: 'Install → doctor → recipes → plan → real project generation',
+      value: 'v2',
+      label: 'golden-path lifecycle',
+      detail: 'Preview-first upgrades preserve application source while managed foundations evolve',
     },
   ],
   releases: [
@@ -45,7 +45,13 @@ export const site = {
       version: 'v0.1.2',
       title: 'Install-ready runtime',
       summary:
-        'Bundled the recipe library with installed binaries, added installed-path resolution and regression coverage, and completed a real Windows end-to-end installation and project-generation test.',
+        'Bundled the recipe library with installed binaries, added installed-path resolution and regression coverage, and completed real installed-runtime verification.',
+    },
+    {
+      version: 'v0.2.0',
+      title: 'Repository engineering',
+      summary:
+        'Added deterministic repository inspection, readiness-v1 scoring, safety-first remediation, managed security foundations, AWS ECS/Fargate deployment intelligence, and golden-path v2 lifecycle upgrades.',
     },
   ],
 } as const;

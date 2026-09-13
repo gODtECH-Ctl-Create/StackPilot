@@ -1,19 +1,31 @@
 # StackPilot roadmap
 
-## Current product
+## V0.2 product
 
-StackPilot is a Rust-powered project scaffolding and golden-path engine. Its primary responsibility is creating and evolving production-minded project structure without hiding stack-specific decisions inside generic tooling.
+StackPilot is a Rust-powered golden-path repository engineering tool. It can create opinionated backend projects, inspect existing repositories, calculate a deterministic readiness score, preview/apply verified remediation, generate a first production deployment foundation, and evolve StackPilot-managed foundations through versioned lifecycle upgrades.
 
-## Integration architecture
+The V0.2 release contract includes:
+
+- six backend golden paths: Rust/Axum, Go/Chi, TypeScript/NestJS, Python/FastAPI, Java/Spring Boot, and C#/ASP.NET Core;
+- `stackpilot inspect` with the versioned `readiness-v1` 0–100 model and CI threshold support;
+- preview-first `stackpilot fix` for environment hygiene, Docker, CI, explicit-cloud Terraform, health checks, security foundations, and StackPilot metadata;
+- managed security controls covering dependency updates/scanning, secret scanning, SBOM generation, conditional container scanning, and least-privilege GitHub Actions permissions;
+- deterministic AWS ECS/Fargate recommendation and additive Terraform deployment generation;
+- golden-path v2 lifecycle metadata plus preview-first `stackpilot upgrade` for source-preserving managed migrations;
+- optional local Steward report observation without changing `readiness-v1`;
+- locked cross-platform release builds and installed-release verification on four native targets.
+
+## Ecosystem boundary
 
 StackPilot and gODtECH Steward remain independent products with a contract boundary:
 
 ```text
 StackPilot
-  ├── scaffolding
-  ├── golden paths
-  ├── stack-aware validation
-  └── readiness-v1
+  ├── scaffolding + golden paths
+  ├── stack-aware inspection/readiness
+  ├── deterministic remediation
+  ├── deployment foundations
+  └── managed golden-path lifecycle
           │
           │ optional observation
           ▼
@@ -26,29 +38,30 @@ StackPilot
 
 StackPilot may consume Steward's public `schemaVersion: 1` scan result. It must not copy Steward's generic rules, change the meaning of `readiness-v1`, or invoke Steward remediation as its own behavior.
 
-## Near-term
+FORGE remains the higher-level orchestration/governance layer when a workflow needs coordinated use of StackPilot and Steward.
 
-- [x] Complete the optional Steward report adapter and end-to-end verification.
-- [x] Document the integration contract and privacy boundary.
-- [x] Keep locked, reproducible Rust builds.
-- [ ] Continue strengthening golden-path generation and stack-aware remediation.
+## Post-V0.2 priorities
 
-## Later
-
-- Optional richer cross-tool health views when the contracts are mature.
-- Forge orchestration support where StackPilot is asked to scaffold and Steward is asked to assess repository health.
-- Expanded golden paths only where recipe correctness and verification coverage justify them.
+- Improve terminal presentation, error messages, progress feedback, and `doctor` guidance.
+- Add richer public demos, generated examples, changelog/roadmap surfaces, and release documentation.
+- Evaluate AWS App Runner where it provides a materially simpler golden path than ECS/Fargate.
+- Add Azure Container Apps and Google Cloud Run only with the same deterministic generation and CI validation standard as ECS/Fargate.
+- Define production criteria before considering Kubernetes/EKS generation; do not add Kubernetes for breadth alone.
+- Extend lifecycle migrations only through explicit versioned steps that preserve application/business logic.
+- Consider a future readiness model version only when new scored controls justify changing the published 0–100 contract.
 
 ## Non-goals
 
+- Turning StackPilot into a hosted deployment control plane.
 - Turning StackPilot into a generic repository housekeeping engine.
-- Reimplementing Steward rules.
-- Making Steward a StackPilot runtime dependency.
-- Folding Steward health directly into `readiness-v1` without a separately versioned model and explicit architectural decision.
+- Reimplementing Steward rules or making Steward a StackPilot runtime dependency.
+- Adding languages, frontends, cloud targets, or Kubernetes merely to increase feature count.
+- Rewriting application/business logic just to advance a golden-path version.
+- Silently changing `readiness-v1` weights as new informational checks are added.
 
-## Completed integration
+## Completed Steward integration
 
-StackPilot now supports:
+StackPilot supports:
 
 ```bash
 stackpilot inspect . --steward-report steward-report.json

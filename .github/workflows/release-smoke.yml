@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to verify, for example v0.1.2. Leave blank to test latest.'
+        description: 'Release tag to verify, for example v0.2.0. Leave blank to test latest.'
         required: false
         type: string
   pull_request:
@@ -91,6 +91,23 @@ jobs:
           test -f release-smoke-project/.github/workflows/ci.yml
           test -f release-smoke-project/infra/terraform/main.tf
 
+          if stackpilot --help | grep -q 'inspect'; then
+            grep -q '^golden_path_version = 2$' release-smoke-project/.stackpilot.toml
+            test -f release-smoke-project/.github/workflows/security.yml
+            test -f release-smoke-project/.github/dependabot.yml
+
+            stackpilot inspect release-smoke-project --fail-below 0 > stackpilot-inspect.txt
+            grep -q '^StackPilot Readiness:' stackpilot-inspect.txt
+            grep -q '^Model: readiness-v1$' stackpilot-inspect.txt
+
+            stackpilot fix release-smoke-project > stackpilot-fix.txt
+            grep -q '^StackPilot fix' stackpilot-fix.txt
+
+            stackpilot upgrade release-smoke-project > stackpilot-upgrade.txt
+            grep -q 'Golden path: v2 -> v2' stackpilot-upgrade.txt
+            grep -q 'Status: already current' stackpilot-upgrade.txt
+          fi
+
       - name: Install and verify on Windows
         if: runner.os == 'Windows'
         shell: pwsh
@@ -133,6 +150,39 @@ jobs:
             foreach ($path in $expected) {
               if (-not (Test-Path $path -PathType Leaf)) {
                 throw "Installed release failed project-generation check: missing $path"
+              }
+            }
+
+            $help = stackpilot --help | Out-String
+            if ($help -match 'inspect') {
+              if (-not (Select-String -Path 'release-smoke-project/.stackpilot.toml' -Pattern '^golden_path_version = 2$' -Quiet)) {
+                throw 'V0.2 installed release did not record golden_path_version = 2.'
+              }
+              foreach ($path in @('release-smoke-project/.github/workflows/security.yml', 'release-smoke-project/.github/dependabot.yml')) {
+                if (-not (Test-Path $path -PathType Leaf)) {
+                  throw "V0.2 installed release is missing managed security file: $path"
+                }
+              }
+
+              stackpilot inspect release-smoke-project --fail-below 0 | Out-File -Encoding utf8 stackpilot-inspect.txt
+              if (-not (Select-String -Path stackpilot-inspect.txt -Pattern '^StackPilot Readiness:' -Quiet)) {
+                throw 'Installed V0.2 inspect output is missing readiness.'
+              }
+              if (-not (Select-String -Path stackpilot-inspect.txt -Pattern '^Model: readiness-v1$' -Quiet)) {
+                throw 'Installed V0.2 inspect output is missing readiness-v1 model identifier.'
+              }
+
+              stackpilot fix release-smoke-project | Out-File -Encoding utf8 stackpilot-fix.txt
+              if (-not (Select-String -Path stackpilot-fix.txt -Pattern '^StackPilot fix' -Quiet)) {
+                throw 'Installed V0.2 fix preview did not run.'
+              }
+
+              stackpilot upgrade release-smoke-project | Out-File -Encoding utf8 stackpilot-upgrade.txt
+              if (-not (Select-String -Path stackpilot-upgrade.txt -Pattern 'Golden path: v2 -> v2' -SimpleMatch -Quiet)) {
+                throw 'Installed V0.2 upgrade did not recognize current golden path v2.'
+              }
+              if (-not (Select-String -Path stackpilot-upgrade.txt -Pattern 'Status: already current' -SimpleMatch -Quiet)) {
+                throw 'Installed V0.2 upgrade is not idempotent.'
               }
             }
           }

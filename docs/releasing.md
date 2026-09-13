@@ -20,7 +20,7 @@ v1.0.0
 
 Do not prefix release tags with `StackPilot-` or create a differently named GitHub release manually. The release workflow uses the Git tag as the source of truth.
 
-The tag version must exactly match the version in `Cargo.toml`. For example, `version = "0.1.2"` must be released with tag `v0.1.2`.
+The tag version must exactly match the version in `Cargo.toml`. For example, `version = "0.2.0"` must be released with tag `v0.2.0`.
 
 `Cargo.lock` is committed and release/CI builds use Cargo's `--locked` mode. If dependency resolution drifts from the committed lockfile, CI or the release build must fail rather than silently selecting new dependency versions.
 
@@ -38,19 +38,20 @@ Only publish statistics that are directly verifiable. Product facts such as supp
 
 ## Normal release procedure
 
-1. Update the package version in `Cargo.toml` and update `Cargo.lock` if Cargo changes it.
+1. Update the package version in `Cargo.toml` and refresh `Cargo.lock` with Cargo.
 2. Update `website/src/data/site.ts` with the same `currentVersion`, append the new release milestone, and refresh any proof point that materially changed.
-3. Merge the release changes to `main` and confirm CI is green, including the website build.
-4. Create the release tag from the intended `main` commit:
+3. Update `README.md` and `CHANGELOG.md` so the public command map and release highlights match the binary being tagged.
+4. Merge the release changes to `main` and confirm all PR CI is green, including the website build, remediation regressions, lifecycle smoke and installed-release compatibility smoke.
+5. Create the release tag from the intended `main` commit:
 
    ```bash
    git checkout main
    git pull --ff-only
-   git tag -a v0.1.2 -m "StackPilot v0.1.2"
-   git push origin v0.1.2
+   git tag -a v0.2.0 -m "StackPilot v0.2.0"
+   git push origin v0.2.0
    ```
 
-5. The `Release` GitHub Actions workflow will automatically:
+6. The `Release` GitHub Actions workflow will automatically:
    - validate the tag against `Cargo.toml`;
    - require the committed `Cargo.lock`;
    - build every native release binary with `cargo build --locked`;
@@ -60,8 +61,8 @@ Only publish statistics that are directly verifiable. Product facts such as supp
    - create the GitHub release;
    - upload all release assets;
    - verify that every expected asset is present.
-6. Publishing the GitHub Release automatically starts the `Installed Release Smoke` workflow. Do not announce the release as installable until that matrix is green.
-7. If a newly claimed platform or workflow is verified, update the website proof points in the next documentation commit so the public story stays evidence-based.
+7. Publishing the GitHub Release automatically starts the `Installed Release Smoke` workflow. Do not announce the release as installable until that matrix is green.
+8. If a newly claimed platform or workflow is verified, update the website proof points in the next documentation commit so the public story stays evidence-based.
 
 ## Expected release assets
 
@@ -86,7 +87,7 @@ Each platform archive must also contain the StackPilot recipe library, including
 - macOS arm64
 - Windows x86_64
 
-For each target the workflow installs a published StackPilot release into an isolated runner directory, then runs:
+For every release the workflow installs StackPilot into an isolated runner directory, then runs the core public journey:
 
 ```text
 stackpilot --version
@@ -96,7 +97,21 @@ stackpilot plan ...
 stackpilot new ...
 ```
 
-The generated smoke project must include StackPilot metadata, Docker, GitHub Actions CI and Terraform output. The workflow runs automatically when a GitHub Release is published, can be started manually for a specific tag, and also validates installer/release changes in pull requests against the latest published release.
+The generated smoke project must include StackPilot metadata, Docker, GitHub Actions CI and Terraform output.
+
+For installed binaries that expose the V0.2 repository-engineering commands, the same matrix also verifies:
+
+```text
+golden_path_version = 2
+managed security workflow + Dependabot
+stackpilot inspect ... --fail-below 0
+stackpilot fix ...        # preview only
+stackpilot upgrade ...    # already-current/idempotent path
+```
+
+This feature detection lets pull requests validate installer/release changes against the latest currently published release while ensuring that a published V0.2+ binary must pass the V0.2 installed-runtime contract.
+
+The workflow runs automatically when a GitHub Release is published, can be started manually for a specific tag, and also validates installer/release changes in pull requests against the latest published release.
 
 ## Retrying a release
 
@@ -104,7 +119,7 @@ The publish step is idempotent. If the release already exists, the workflow uplo
 
 For an existing valid `vX.Y.Z` tag, the workflow can also be run manually from **Actions → Release → Run workflow** and supplied with that existing tag. The workflow checks out the tag itself, so the tag must already exist in the repository.
 
-The installed-release matrix can be re-run independently from **Actions → Installed Release Smoke → Run workflow**. Supply a tag such as `v0.1.2`, or leave it blank to test the current latest release.
+The installed-release matrix can be re-run independently from **Actions → Installed Release Smoke → Run workflow**. Supply a tag such as `v0.2.0`, or leave it blank to test the current latest release.
 
 ## Manual installer smoke tests
 
@@ -125,7 +140,7 @@ stackpilot plan smoke-test --recipe base --non-interactive
 To test a specific release:
 
 ```powershell
-$env:STACKPILOT_VERSION = "0.1.2"
+$env:STACKPILOT_VERSION = "0.2.0"
 irm https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.ps1 | iex
 ```
 
@@ -144,7 +159,7 @@ stackpilot plan smoke-test --recipe base --non-interactive
 To test a specific release:
 
 ```bash
-STACKPILOT_VERSION=0.1.2 \
+STACKPILOT_VERSION=0.2.0 \
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.sh)"
 ```
 
