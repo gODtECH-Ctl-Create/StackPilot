@@ -1,0 +1,158 @@
+from pathlib import Path
+
+main = Path("src/main.rs")
+text = main.read_text()
+text = text.replace("mod scaffold;\nmod spec;", "mod scaffold;\nmod security;\nmod spec;", 1)
+text = text.replace(
+    '''        /// Write the planned safe changes. Without this flag, fix is a dry-run preview.\n        #[arg(long)]\n        apply: bool,''',
+    '''        /// Add the StackPilot security baseline (Dependabot plus hardened scanning workflow).\n        #[arg(long)]\n        security: bool,\n\n        /// Write the planned safe changes. Without this flag, fix is a dry-run preview.\n        #[arg(long)]\n        apply: bool,''',
+    1,
+)
+text = text.replace(
+    '''            cloud,\n            apply,\n        } => {\n            let recipes_dir = resolve_recipes_dir(recipes_dir);\n            fix::run(&path, &recipes_dir, cloud.as_deref(), apply)?;''',
+    '''            cloud,\n            security,\n            apply,\n        } => {\n            let recipes_dir = resolve_recipes_dir(recipes_dir);\n            fix::run(&path, &recipes_dir, cloud.as_deref(), security, apply)?;''',
+    1,
+)
+main.write_text(text)
+
+inspect = Path("src/inspect.rs")
+text = inspect.read_text()
+text = text.replace(
+    "use anyhow::{Context, Result, bail};",
+    "use anyhow::{Context, Result, bail};\n\nuse crate::security;",
+    1,
+)
+text = text.replace("    let findings = vec![", "    let mut findings = vec![", 1)
+text = text.replace(
+    '''    ];\n\n    Ok(InspectionReport {\n        root,''',
+    '''    ];\n    findings.extend(security::inspect(&root)?);\n\n    Ok(InspectionReport {\n        root,''',
+    1,
+)
+inspect.write_text(text)
+
+fix = Path("src/fix.rs")
+text = fix.read_text()
+text = text.replace(
+    '''pub fn run(root: &Path, recipes_dir: &Path, cloud: Option<&str>, apply: bool) -> Result<()> {\n    let plan = plan_repository(root, recipes_dir, cloud)?;''',
+    '''pub fn run(\n    root: &Path,\n    recipes_dir: &Path,\n    cloud: Option<&str>,\n    security_baseline: bool,\n    apply: bool,\n) -> Result<()> {\n    let plan = plan_repository_with_options(root, recipes_dir, cloud, security_baseline)?;''',
+    1,
+)
+old_plan = '''pub fn plan_repository(root: &Path, recipes_dir: &Path, cloud: Option<&str>) -> Result<FixPlan> {\n    if !root.exists() {'''
+new_plan = '''pub fn plan_repository(root: &Path, recipes_dir: &Path, cloud: Option<&str>) -> Result<FixPlan> {\n    plan_repository_with_options(root, recipes_dir, cloud, false)\n}\n\nfn plan_repository_with_options(\n    root: &Path,\n    recipes_dir: &Path,\n    cloud: Option<&str>,\n    security_baseline: bool,\n) -> Result<FixPlan> {\n    if !root.exists() {'''
+if old_plan not in text:
+    raise SystemExit("plan_repository signature not found")
+text = text.replace(old_plan, new_plan, 1)
+text = text.replace(
+    '''    plan_environment_fixes(&root, &report, &mut changes)?;\n    let cloud = normalize_cloud(cloud)?;''',
+    '''    plan_environment_fixes(&root, &report, &mut changes)?;\n    if security_baseline {\n        plan_security_baseline(&root, &report, recipes_dir, &mut changes)?;\n    }\n    let cloud = normalize_cloud(cloud)?;''',
+    1,
+)
+
+marker = "fn plan_stack_fixes(\n"
+security_fn = r'''fn plan_security_baseline(
+    root: &Path,
+    report: &InspectionReport,
+    recipes_dir: &Path,
+    changes: &mut Vec<PlannedChange>,
+) -> Result<()> {
+    let profile = match verified_stack_profile(root, report) {
+        Ok(profile) => profile,
+        Err(_) => return Ok(()),
+    };
+
+    if !recipes_dir.is_dir() {
+        bail!(
+            "StackPilot recipes were not found at {}; pass --recipes-dir or reinstall StackPilot",
+            recipes_dir.display()
+        );
+    }
+
+    let spec = ProjectSpec::configured(
+        profile.project_name,
+        "Backend API".to_string(),
+        profile.language.to_string(),
+        profile.framework.to_string(),
+        "None".to_string(),
+        "None".to_string(),
+        false,
+        true,
+        false,
+    )?;
+
+    for (relative, description) in [
+        (
+            Path::new(".github/workflows/security.yml"),
+            "add dependency, secret, SBOM and conditional container scanning with read-only token permissions",
+        ),
+        (
+            Path::new(".github/dependabot.yml"),
+            "add ecosystem-aware weekly dependency and GitHub Actions updates",
+        ),
+    ] {
+        let target = root.join(relative);
+        if path_entry_exists(&target) {
+            continue;
+        }
+        if let Some(path) = first_symlink_ancestor(root, relative)? {
+            bail!(
+                "refusing to create {} because its target path contains a symlink at {}",
+                relative.display(),
+                path.display()
+            );
+        }
+        changes.push(PlannedChange {
+            path: relative.to_path_buf(),
+            kind: ChangeKind::Create,
+            description: description.to_string(),
+            content: scaffold::render_destination(&spec, RECIPE_NAME, recipes_dir, relative)?,
+        });
+    }
+
+    Ok(())
+}
+
+'''
+if marker not in text:
+    raise SystemExit("plan_stack_fixes marker not found")
+text = text.replace(marker, security_fn + marker, 1)
+
+test_marker = "\n    #[test]\n    fn explicit_aws_cloud_plans_terraform_foundation()"
+test = r'''
+    #[test]
+    fn security_baseline_plans_create_only_security_files() {
+        let repo = tempdir().expect("repository");
+        fs::write(
+            repo.path().join("go.mod"),
+            "module example.com/payments\n\ngo 1.27\n\nrequire github.com/go-chi/chi/v5 v5.0.0\n",
+        )
+        .expect("go.mod");
+        fs::write(
+            repo.path().join("main.go"),
+            "package main\n\nimport (\n    \"net/http\"\n    \"github.com/go-chi/chi/v5\"\n)\nfunc main() { router := chi.NewRouter(); _ = http.ListenAndServe(\":3000\", router) }\n",
+        )
+        .expect("main.go");
+
+        let plan = super::plan_repository_with_options(
+            repo.path(),
+            Path::new("recipes"),
+            None,
+            true,
+        )
+        .expect("fix plan");
+
+        for path in [
+            ".github/workflows/security.yml",
+            ".github/dependabot.yml",
+        ] {
+            assert!(
+                plan.changes.iter().any(|change| change.path == Path::new(path)),
+                "expected {path} to be planned"
+            );
+        }
+    }
+
+'''
+if test_marker not in text:
+    raise SystemExit("test insertion marker not found")
+text = text.replace(test_marker, "\n" + test + test_marker, 1)
+fix.write_text(text)
