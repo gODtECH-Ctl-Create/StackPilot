@@ -1,0 +1,66 @@
+variable "vpc_id" {
+  description = "VPC ID where {{ project_name }} will run"
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "At least two subnet IDs for the load balancer and ECS service"
+  type        = list(string)
+
+  validation {
+    condition     = length(var.subnet_ids) >= 2
+    error_message = "Provide at least two subnets for a highly available ECS/Fargate service."
+  }
+}
+
+variable "container_image" {
+  description = "Deployable container image URI for {{ project_name }}"
+  type        = string
+}
+
+variable "desired_count" {
+  description = "Desired number of ECS tasks"
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.desired_count >= 1
+    error_message = "desired_count must be at least 1."
+  }
+}
+
+variable "task_cpu" {
+  description = "Fargate task CPU units"
+  type        = number
+  default     = 256
+}
+
+variable "task_memory" {
+  description = "Fargate task memory in MiB"
+  type        = number
+  default     = 512
+}
+
+variable "assign_public_ip" {
+  description = "Assign public IP addresses to ECS tasks; keep false for private subnets with outbound access"
+  type        = bool
+  default     = false
+}
+
+variable "allowed_cidr_blocks" {
+  description = "CIDR blocks allowed to reach the public HTTP listener"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention period"
+  type        = number
+  default     = 30
+}
+
+variable "health_check_grace_period_seconds" {
+  description = "Time ECS allows the application to start before load balancer health checks affect deployments"
+  type        = number
+  default     = 60
+}
