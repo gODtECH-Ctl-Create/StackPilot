@@ -1,0 +1,229 @@
+name: Health remediation smoke
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'recipes/**'
+      - '.github/workflows/health-remediation-smoke.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'recipes/**'
+      - '.github/workflows/health-remediation-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  health-remediation:
+    name: health fix / ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: Rust
+            framework: Axum
+            slug: health-rust
+          - language: Go
+            framework: Chi
+            slug: health-go
+          - language: TypeScript
+            framework: NestJS
+            slug: health-nest
+          - language: Python
+            framework: FastAPI
+            slug: health-python
+          - language: Java
+            framework: Spring Boot
+            slug: health-java
+          - language: C#
+            framework: ASP.NET Core
+            slug: health-dotnet
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust for StackPilot
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Go
+        if: matrix.language == 'Go'
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+          cache: false
+
+      - name: Set up Node.js
+        if: matrix.language == 'TypeScript'
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Set up Python
+        if: matrix.language == 'Python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Set up Java
+        if: matrix.language == 'Java'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up .NET
+        if: matrix.language == 'C#'
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build StackPilot
+        run: cargo build --locked --release
+
+      - name: Generate healthy golden path
+        run: |
+          ./target/release/stackpilot new '${{ matrix.slug }}' \
+            --recipe base \
+            --non-interactive \
+            --kind 'Backend API' \
+            --language '${{ matrix.language }}' \
+            --framework '${{ matrix.framework }}' \
+            --database PostgreSQL \
+            --cloud AWS \
+            --docker true \
+            --ci true \
+            --terraform true \
+            --no-git
+
+      - name: Remove health endpoint to create remediation fixture
+        shell: bash
+        run: |
+          repo='${{ matrix.slug }}'
+          case '${{ matrix.language }}' in
+            Rust)
+              cat > "$repo/src/main.rs" <<'EOF'
+          use axum::Router;
+
+          #[tokio::main]
+          async fn main() {
+              let app = Router::new();
+              let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+              axum::serve(listener, app).await.unwrap();
+          }
+          EOF
+              ;;
+            Go)
+              cat > "$repo/main.go" <<'EOF'
+          package main
+
+          import (
+              "net/http"
+              "github.com/go-chi/chi/v5"
+          )
+
+          func main() {
+              router := chi.NewRouter()
+              _ = http.ListenAndServe(":3000", router)
+          }
+          EOF
+              ;;
+            TypeScript)
+              cat > "$repo/src/app.controller.ts" <<'EOF'
+          import { Controller, Get } from '@nestjs/common';
+
+          @Controller()
+          export class AppController {
+            @Get()
+            root(): { service: string } {
+              return { service: 'health-nest' };
+            }
+          }
+          EOF
+              ;;
+            Python)
+              cat > "$repo/app/main.py" <<'EOF'
+          from fastapi import FastAPI
+
+          app = FastAPI(title="health-python")
+
+          @app.get("/")
+          def root() -> dict[str, str]:
+              return {"status": "ok"}
+          EOF
+              ;;
+            Java)
+              rm "$repo/src/main/java/com/stackpilot/app/HealthController.java"
+              ;;
+            'C#')
+              cat > "$repo/Program.cs" <<'EOF'
+          var builder = WebApplication.CreateBuilder(args);
+          var app = builder.Build();
+
+          app.MapGet("/", () => "ok");
+
+          app.Run();
+          EOF
+              ;;
+          esac
+
+      - name: Preview and apply health remediation
+        run: |
+          repo='${{ matrix.slug }}'
+          ./target/release/stackpilot inspect "$repo" > before.txt
+          grep -q 'No health/readiness endpoint convention detected' before.txt
+
+          ./target/release/stackpilot fix "$repo" > preview.txt
+          grep -Eq '(update .*|create .*HealthController\.java).*health|health.*(update|create)' preview.txt
+          ./target/release/stackpilot inspect "$repo" > still-before.txt
+          grep -q 'No health/readiness endpoint convention detected' still-before.txt
+
+          ./target/release/stackpilot fix "$repo" --apply > apply.txt
+          ./target/release/stackpilot inspect "$repo" > after.txt
+          grep -q 'Health/readiness endpoint convention detected' after.txt
+
+          ./target/release/stackpilot fix "$repo" > second-preview.txt
+          if grep -Eq '(update .*|create .*HealthController\.java).*health|health.*(update|create)' second-preview.txt; then
+            echo 'health remediation unexpectedly planned a second endpoint'
+            exit 1
+          fi
+
+      - name: Validate Rust repair
+        if: matrix.language == 'Rust'
+        run: cargo check --manifest-path '${{ matrix.slug }}/Cargo.toml'
+
+      - name: Validate Go repair
+        if: matrix.language == 'Go'
+        working-directory: ${{ matrix.slug }}
+        run: |
+          go mod tidy
+          go test ./...
+          go vet ./...
+
+      - name: Validate NestJS repair
+        if: matrix.language == 'TypeScript'
+        working-directory: ${{ matrix.slug }}
+        run: |
+          npm install
+          npm run build
+
+      - name: Validate FastAPI repair
+        if: matrix.language == 'Python'
+        working-directory: ${{ matrix.slug }}
+        run: |
+          python -m pip install -e '.[dev]'
+          pytest -q
+
+      - name: Validate Spring Boot repair
+        if: matrix.language == 'Java'
+        working-directory: ${{ matrix.slug }}
+        run: mvn -B verify
+
+      - name: Validate ASP.NET Core repair
+        if: matrix.language == 'C#'
+        working-directory: ${{ matrix.slug }}
+        run: dotnet build app.csproj --configuration Release
