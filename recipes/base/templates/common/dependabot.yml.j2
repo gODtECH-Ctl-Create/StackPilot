@@ -1,0 +1,37 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+{% if language == "Rust" %}
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+{% elif language == "Go" %}
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+{% elif language == "TypeScript" %}
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+{% elif language == "Python" %}
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+{% elif language == "Java" %}
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+{% elif language == "C#" %}
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+{% endif %}
