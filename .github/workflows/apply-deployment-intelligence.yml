@@ -89,6 +89,11 @@ jobs:
               "    )?;\n    plan_metadata_fix(&root, &report, cloud, &mut changes)?;\n\n    Ok(FixPlan {",
               "    )?;\n    plan_deployment_fix(\n        &root,\n        &report,\n        recipes_dir,\n        deployment_target,\n        &mut changes,\n        &mut deferred,\n    )?;\n    plan_metadata_fix(&root, &report, cloud, &mut changes)?;\n\n    Ok(FixPlan {"
           )
+          replace_once(
+              fix,
+              "super::plan_repository_with_options(repo.path(), Path::new(\"recipes\"), None, true)",
+              "super::plan_repository_with_options(repo.path(), Path::new(\"recipes\"), None, true, None)"
+          )
 
           anchor = "fn plan_health_fix(\n"
           text = fix.read_text()
