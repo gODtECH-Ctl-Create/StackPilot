@@ -9,9 +9,9 @@ database = "{{ database }}"
 cloud = "{{ cloud }}"
 
 [features]
-docker = {{ docker }}
-ci = {{ ci }}
-terraform = {{ terraform }}
+docker = {% if docker %}true{% else %}false{% endif %}
+ci = {% if ci %}true{% else %}false{% endif %}
+terraform = {% if terraform %}true{% else %}false{% endif %}
 
 [stackpilot]
 recipe = "{{ recipe_name }}"
