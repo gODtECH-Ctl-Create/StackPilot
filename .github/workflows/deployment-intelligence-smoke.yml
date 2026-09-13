@@ -38,6 +38,8 @@ jobs:
             --ci true \
             --terraform true \
             --no-git
+          echo "Generated StackPilot metadata:"
+          cat /tmp/stackpilot-ecs-smoke/.stackpilot.toml
 
       - name: Verify deterministic recommendation
         run: |
