@@ -84,7 +84,9 @@ jobs:
           ./target/debug/stackpilot fix /tmp/stackpilot-ecs-smoke \
             --recipes-dir "$GITHUB_WORKSPACE/recipes" \
             --deployment aws-ecs-fargate | tee /tmp/deploy-second-preview.txt
-          grep -q "No safe automatic changes are currently required" /tmp/deploy-second-preview.txt
+          test "$(grep -c '^  none$' /tmp/deploy-second-preview.txt)" -eq 2
+          ! grep -q '^+ ' /tmp/deploy-second-preview.txt
+          ! grep -q '^~ ' /tmp/deploy-second-preview.txt
 
       - name: Reject conflicting cloud intent
         run: |
