@@ -74,8 +74,14 @@ struct StackProfile {
     framework: &'static str,
 }
 
-pub fn run(root: &Path, recipes_dir: &Path, cloud: Option<&str>, apply: bool) -> Result<()> {
-    let plan = plan_repository(root, recipes_dir, cloud)?;
+pub fn run(
+    root: &Path,
+    recipes_dir: &Path,
+    cloud: Option<&str>,
+    security_baseline: bool,
+    apply: bool,
+) -> Result<()> {
+    let plan = plan_repository_with_options(root, recipes_dir, cloud, security_baseline)?;
     print_plan(&plan, apply);
 
     if !apply {
@@ -108,7 +114,17 @@ pub fn run(root: &Path, recipes_dir: &Path, cloud: Option<&str>, apply: bool) ->
     Ok(())
 }
 
+#[cfg(test)]
 pub fn plan_repository(root: &Path, recipes_dir: &Path, cloud: Option<&str>) -> Result<FixPlan> {
+    plan_repository_with_options(root, recipes_dir, cloud, false)
+}
+
+fn plan_repository_with_options(
+    root: &Path,
+    recipes_dir: &Path,
+    cloud: Option<&str>,
+    security_baseline: bool,
+) -> Result<FixPlan> {
     if !root.exists() {
         bail!("repository path does not exist: {}", root.display());
     }
@@ -125,6 +141,9 @@ pub fn plan_repository(root: &Path, recipes_dir: &Path, cloud: Option<&str>) -> 
     let mut updates = Vec::new();
 
     plan_environment_fixes(&root, &report, &mut changes)?;
+    if security_baseline {
+        plan_security_baseline(&root, &report, recipes_dir, &mut changes)?;
+    }
     let cloud = normalize_cloud(cloud)?;
     let deferred = plan_stack_fixes(
         &root,
@@ -199,6 +218,68 @@ fn plan_environment_fixes(
             description: "protect local .env files while keeping .env.example commit-safe"
                 .to_string(),
             content: ENV_IGNORE_BLOCK.to_string(),
+        });
+    }
+
+    Ok(())
+}
+
+fn plan_security_baseline(
+    root: &Path,
+    report: &InspectionReport,
+    recipes_dir: &Path,
+    changes: &mut Vec<PlannedChange>,
+) -> Result<()> {
+    let profile = match verified_stack_profile(root, report) {
+        Ok(profile) => profile,
+        Err(_) => return Ok(()),
+    };
+
+    if !recipes_dir.is_dir() {
+        bail!(
+            "StackPilot recipes were not found at {}; pass --recipes-dir or reinstall StackPilot",
+            recipes_dir.display()
+        );
+    }
+
+    let spec = ProjectSpec::configured(
+        profile.project_name,
+        "Backend API".to_string(),
+        profile.language.to_string(),
+        profile.framework.to_string(),
+        "None".to_string(),
+        "None".to_string(),
+        false,
+        true,
+        false,
+    )?;
+
+    for (relative, description) in [
+        (
+            Path::new(".github/workflows/security.yml"),
+            "add dependency, secret, SBOM and conditional container scanning with read-only token permissions",
+        ),
+        (
+            Path::new(".github/dependabot.yml"),
+            "add ecosystem-aware weekly dependency and GitHub Actions updates",
+        ),
+    ] {
+        let target = root.join(relative);
+        if path_entry_exists(&target) {
+            continue;
+        }
+        if let Some(path) = first_symlink_ancestor(root, relative)? {
+            bail!(
+                "refusing to create {} because its target path contains a symlink at {}",
+                relative.display(),
+                path.display()
+            );
+        }
+        changes.push(PlannedChange {
+            path: relative.to_path_buf(),
+            kind: ChangeKind::Create,
+            description: description.to_string(),
+            content: scaffold::render_destination(&spec, RECIPE_NAME, recipes_dir, relative)?,
         });
     }
 
@@ -1428,6 +1509,34 @@ mod tests {
                 .any(|change| change.path == Path::new(".github/workflows/ci.yml"))
         );
         assert!(plan.deferred.iter().any(|fix| fix.control == "CI/CD"));
+    }
+
+    #[test]
+    fn security_baseline_plans_create_only_security_files() {
+        let repo = tempdir().expect("repository");
+        fs::write(
+            repo.path().join("go.mod"),
+            "module example.com/payments\n\ngo 1.27\n\nrequire github.com/go-chi/chi/v5 v5.0.0\n",
+        )
+        .expect("go.mod");
+        fs::write(
+            repo.path().join("main.go"),
+            "package main\n\nimport (\n    \"net/http\"\n    \"github.com/go-chi/chi/v5\"\n)\nfunc main() { router := chi.NewRouter(); _ = http.ListenAndServe(\":3000\", router) }\n",
+        )
+        .expect("main.go");
+
+        let plan =
+            super::plan_repository_with_options(repo.path(), Path::new("recipes"), None, true)
+                .expect("fix plan");
+
+        for path in [".github/workflows/security.yml", ".github/dependabot.yml"] {
+            assert!(
+                plan.changes
+                    .iter()
+                    .any(|change| change.path == Path::new(path)),
+                "expected {path} to be planned"
+            );
+        }
     }
 
     #[test]

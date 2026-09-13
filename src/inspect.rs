@@ -6,6 +6,8 @@ use std::{
 
 use anyhow::{Context, Result, bail};
 
+use crate::security;
+
 const MAX_SCAN_DEPTH: usize = 6;
 const MAX_TEXT_FILE_SIZE: u64 = 512 * 1024;
 const IGNORED_DIRECTORIES: &[&str] = &[
@@ -75,7 +77,7 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
         .iter()
         .any(|path| path.file_name().and_then(|name| name.to_str()) == Some(".stackpilot.toml"));
 
-    let findings = vec![
+    let mut findings = vec![
         Finding {
             category: "Runtime",
             name: "Language",
@@ -198,6 +200,7 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
             }),
         },
     ];
+    findings.extend(security::inspect(&root)?);
 
     Ok(InspectionReport {
         root,

@@ -159,6 +159,16 @@ template = "common/ci.yml.j2"
 destination = ".github/workflows/ci.yml"
 when = "ci"
 
+[[files]]
+template = "common/security.yml.j2"
+destination = ".github/workflows/security.yml"
+when = "ci"
+
+[[files]]
+template = "common/dependabot.yml.j2"
+destination = ".github/dependabot.yml"
+when = "ci"
+
 # Cloud-agnostic Terraform entry point selected by cloud profile
 [[files]]
 template = "terraform/main.tf.j2"
