@@ -325,7 +325,7 @@ fn plan_health_fix(
         ("Rust", "Axum") => plan_rust_health(root, updates),
         ("Go", "Chi") => plan_go_health(root, updates),
         ("TypeScript", "NestJS") => plan_nest_health(root, updates),
-        ("Python", "FastAPI") => plan_fastapi_health(root, updates),
+        ("Python", "FastAPI") => plan_fastapi_health(root, &profile, updates),
         ("Java", "Spring Boot") => plan_spring_health(root, recipes_dir, &profile, changes),
         ("C#", "ASP.NET Core") => plan_aspnet_health(root, updates),
         _ => Err("the detected framework does not have a health remediation adapter".to_string()),
@@ -448,6 +448,7 @@ fn plan_nest_health(
 
 fn plan_fastapi_health(
     root: &Path,
+    profile: &StackProfile,
     updates: &mut Vec<PlannedUpdate>,
 ) -> std::result::Result<(), String> {
     let relative = Path::new("app/main.py");
@@ -464,7 +465,8 @@ fn plan_fastapi_health(
         "\n\n"
     };
     let content = format!(
-        "{original}{separator}@app.get(\"/health\")\ndef stackpilot_health() -> dict[str, str]:\n    return {{\"status\": \"ok\"}}\n"
+        "{original}{separator}@app.get(\"/health\")\ndef stackpilot_health() -> dict[str, str]:\n    return {{\"status\": \"ok\", \"service\": \"{}\"}}\n",
+        profile.project_name
     );
     push_update(
         updates,
@@ -824,7 +826,7 @@ fn verified_stack_profile(
                         .to_string(),
                 );
             }
-            "app".to_string()
+            pyproject_package_name(&pyproject)?
         }
         ("Java", "Spring Boot") => {
             require_file(root, "pom.xml")?;
@@ -851,6 +853,19 @@ fn verified_stack_profile(
         language,
         framework,
     })
+}
+
+fn pyproject_package_name(content: &str) -> std::result::Result<String, String> {
+    let manifest: toml::Value = toml::from_str(content)
+        .map_err(|error| format!("pyproject.toml could not be parsed safely: {error}"))?;
+    manifest
+        .get("project")
+        .and_then(|project| project.get("name"))
+        .and_then(toml::Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| {
+            "FastAPI auto-remediation requires [project].name in pyproject.toml".to_string()
+        })
 }
 
 fn cargo_package_name(root: &Path) -> std::result::Result<String, String> {
