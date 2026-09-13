@@ -124,7 +124,8 @@ pub fn inspect(root: &Path) -> Result<Vec<Finding>> {
             } else if root.join("Dockerfile").is_file() {
                 "Dockerfile detected without a container image scan".to_string()
             } else {
-                "No container image scan detected; repository does not expose a root Dockerfile".to_string()
+                "No container image scan detected; repository does not expose a root Dockerfile"
+                    .to_string()
             },
             "When a Dockerfile is present, build and scan the image for high/critical vulnerabilities in CI.",
         ),
@@ -199,7 +200,10 @@ fn inspect_workflow_permissions(root: &Path) -> Result<PermissionDetection> {
         let content = fs::read_to_string(&path)
             .with_context(|| format!("failed to read {}", path.display()))?;
         let lower = content.to_ascii_lowercase();
-        if lower.lines().any(|line| line.trim_start().starts_with("permissions:")) {
+        if lower
+            .lines()
+            .any(|line| line.trim_start().starts_with("permissions:"))
+        {
             explicit += 1;
         }
         if lower.contains("permissions: write-all")
@@ -325,7 +329,11 @@ mod tests {
             "GitHub Actions permissions",
         ] {
             assert_eq!(
-                findings.iter().find(|finding| finding.name == name).expect(name).status,
+                findings
+                    .iter()
+                    .find(|finding| finding.name == name)
+                    .expect(name)
+                    .status,
                 FindingStatus::Passed,
                 "expected {name} to pass"
             );
