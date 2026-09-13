@@ -145,7 +145,13 @@ pub fn render_foundation_file(
 
 fn metadata_project_value(root: &Path, key: &str) -> Option<String> {
     let raw = fs::read_to_string(root.join(".stackpilot.toml")).ok()?;
-    let value: toml::Value = toml::from_str(&raw).ok()?;
+    // StackPilot v0.1.x rendered template booleans as Python-style True/False.
+    // Normalize only assignment values so legacy metadata remains readable while
+    // all newly generated files use valid TOML lowercase booleans.
+    let normalized = raw
+        .replace(" = True", " = true")
+        .replace(" = False", " = false");
+    let value: toml::Value = toml::from_str(&normalized).ok()?;
     value.get("project")?.get(key)?.as_str().map(str::to_string)
 }
 
@@ -256,6 +262,20 @@ mod tests {
 
         assert_eq!(result.target, AWS_ECS_FARGATE);
         assert_eq!(result.label, "AWS ECS/Fargate");
+    }
+
+    #[test]
+    fn reads_legacy_metadata_with_uppercase_booleans() {
+        let root = tempdir().unwrap();
+        fs::write(
+            root.path().join(".stackpilot.toml"),
+            "version = 1\n\n[project]\nkind = \"Backend API\"\ncloud = \"AWS\"\n\n[features]\ndocker = True\nci = True\nterraform = False\n",
+        )
+        .unwrap();
+
+        assert!(
+            recommendation(root.path(), &["Go".to_string()], &["Chi".to_string()], true).is_some()
+        );
     }
 
     #[test]
