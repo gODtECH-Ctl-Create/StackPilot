@@ -6,22 +6,22 @@
 
 <p>
   <a href="https://github.com/gODtECH-Ctl-Create/StackPilot/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/gODtECH-Ctl-Create/StackPilot/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI status" /></a>
-  <img src="https://img.shields.io/badge/version-0.1.2-8d91ff?style=for-the-badge" alt="StackPilot version 0.1.2" />
+  <img src="https://img.shields.io/badge/version-0.2.0-8d91ff?style=for-the-badge" alt="StackPilot version 0.2.0" />
   <img src="https://img.shields.io/badge/license-MIT-8bffb0?style=for-the-badge" alt="MIT license" />
   <img src="https://img.shields.io/badge/core-Rust-000000?style=for-the-badge&logo=rust&logoColor=white" alt="Rust core" />
   <img src="https://img.shields.io/badge/golden_paths-6-11172a?style=for-the-badge" alt="Six golden paths" />
 </p>
 
-### Opinionated project scaffolding for production-minded repositories.
+### Opinionated golden paths for building, assessing, and safely improving production-minded repositories.
 
-<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&size=18&duration=2400&pause=750&color=8BFFB0&center=true&vCenter=true&width=1000&lines=Choose+a+language.+Get+the+golden+path.;Docker+%2B+CI+%2B+Terraform+without+the+setup+drift.;Rust+%7C+Go+%7C+TypeScript+%7C+Python+%7C+Java+%7C+C%23;Preview+the+plan.+Generate+the+repo.+Start+building." alt="Animated StackPilot capabilities" />
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&size=18&duration=2400&pause=750&color=8BFFB0&center=true&vCenter=true&width=1000&lines=Choose+a+language.+Get+the+golden+path.;Inspect+an+existing+repo.+Score+its+readiness.;Preview+safe+fixes.+Apply+only+with+explicit+intent.;Upgrade+managed+foundations+without+rewriting+your+app." alt="Animated StackPilot capabilities" />
 
 <p>
   <a href="https://godtech-ctl-create.github.io/StackPilot/">Website</a> ·
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-golden-paths">Golden paths</a> ·
+  <a href="#-repository-engineering">Repository engineering</a> ·
   <a href="#-architecture">Architecture</a> ·
-  <a href="#-what-you-get">What you get</a> ·
   <a href="#-ecosystem">Ecosystem</a> ·
   <a href="#-development">Development</a>
 </p>
@@ -32,23 +32,24 @@
 
 ## ⚡ The 30-second version
 
-**StackPilot** is a Rust-powered GitHub template and project scaffolding engine. Instead of asking you to choose from hundreds of framework combinations, it provides a deliberately opinionated **golden path** for each supported language and keeps generated repositories structurally consistent.
+**StackPilot** is a Rust-powered golden-path engine for both new and existing repositories. It scaffolds opinionated backend projects, inspects existing repositories, calculates a deterministic production-readiness score, previews safe remediation, and upgrades StackPilot-managed foundations over time.
 
 ```text
-LANGUAGE
-   ↓
-GOLDEN FRAMEWORK
-   ↓
-PRODUCTION DEFAULTS
-   ↓
-RECIPE + VALIDATION
-   ↓
-READY-TO-BUILD REPOSITORY
+PROJECT INTENT OR EXISTING REPOSITORY
+               ↓
+           STACKPILOT
+               ↓
+   ┌───────────┼────────────┐
+   ↓           ↓            ↓
+SCAFFOLD    INSPECT      UPGRADE
+   ↓           ↓            ↓
+GOLDEN      READINESS    MANAGED
+PATH        + FIX PLAN   LIFECYCLE
 ```
 
-For deployable services, StackPilot defaults toward **PostgreSQL, AWS, Docker, CI, and Terraform**. Every generated backend service begins from the same contract: `/health`, port `3000`, container support, language-native CI, environment metadata, and optional Terraform infrastructure.
+For deployable services, StackPilot defaults toward **PostgreSQL, AWS, Docker, CI, and Terraform**. Every generated backend service begins from the same contract: `/health`, port `3000`, container support, language-native CI, environment metadata, optional Terraform infrastructure, and golden-path lifecycle metadata.
 
-> **v0.1 focus:** backend services and APIs are the validated golden paths. Frontend, full-stack, workers, CLI apps, and libraries remain roadmap targets.
+> **v0.2 focus:** backend golden paths plus deterministic repository intelligence, safety-first remediation, security foundations, AWS ECS/Fargate deployment intelligence, and managed golden-path upgrades. Additional deployment targets and frontend/full-stack golden paths remain roadmap work.
 
 <a href="#readme-top">↑ back to top</a>
 
@@ -56,7 +57,7 @@ For deployable services, StackPilot defaults toward **PostgreSQL, AWS, Docker, C
 
 ## 🧭 Golden paths
 
-StackPilot recommends one production-minded framework per supported ecosystem.
+StackPilot recommends one production-minded framework per supported backend ecosystem.
 
 | Language | Golden path | Typical output |
 | --- | --- | --- |
@@ -77,40 +78,21 @@ The normal workflow recommends instead of overwhelming. Automation can still ove
 
 ## 🚀 Quick start
 
-### GitHub template flow
+### Install StackPilot
 
-The lowest-friction path is GitHub Actions:
-
-```text
-01  Use this template
-02  Open Actions → Configure StackPilot Template
-03  Choose a language
-04  Adjust infrastructure only when necessary
-05  Run the workflow
-06  Review the generated repository
-```
-
-StackPilot previews the plan, generates the selected golden path, commits the result, persists the choices in `.stackpilot.toml`, and removes the template-engine source files.
-
-For local interactive setup after cloning:
+Linux / macOS:
 
 ```bash
-stackpilot bootstrap
+curl -fsSL https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.sh | sh
 ```
 
-When running directly from source:
+Windows PowerShell:
 
-```bash
-cargo run -- bootstrap
+```powershell
+irm https://raw.githubusercontent.com/gODtECH-Ctl-Create/StackPilot/main/scripts/install.ps1 | iex
 ```
 
-Keep the engine while testing bootstrap:
-
-```bash
-stackpilot bootstrap --keep-engine
-```
-
-### Create a separate project
+### Create a new project
 
 Interactive:
 
@@ -155,37 +137,130 @@ stackpilot new payment-service \
   --terraform true
 ```
 
+### GitHub template flow
+
+```text
+01  Use this template
+02  Open Actions → Configure StackPilot Template
+03  Choose a language
+04  Adjust infrastructure only when necessary
+05  Run the workflow
+06  Review the generated repository
+```
+
+For local interactive setup after cloning the template:
+
+```bash
+stackpilot bootstrap
+```
+
+Keep the engine while testing bootstrap:
+
+```bash
+stackpilot bootstrap --keep-engine
+```
+
+<a href="#readme-top">↑ back to top</a>
+
+---
+
+## 🧪 Repository engineering
+
+### Inspect and score an existing repository
+
+```bash
+stackpilot inspect .
+```
+
+`inspect` is deterministic and read-only. It detects language/framework, Docker, CI/CD, Terraform, health checks, environment hygiene, security foundations, StackPilot metadata, and supported deployment signals.
+
+The versioned **`readiness-v1`** model scores repositories out of 100 across Runtime, Delivery, Infrastructure, Security, and Operability.
+
+Use it as a CI quality gate:
+
+```bash
+stackpilot inspect . --fail-below 80
+```
+
+### Preview safe remediation
+
+```bash
+stackpilot fix .
+```
+
+Preview is the default. Nothing is written until `--apply` is supplied:
+
+```bash
+stackpilot fix . --apply
+```
+
+Explicit options include:
+
+```bash
+stackpilot fix . --cloud AWS
+stackpilot fix . --security
+stackpilot fix . --deployment aws-ecs-fargate
+```
+
+StackPilot only mutates verified deterministic foundations. Ambiguous layouts are deferred instead of guessed, application changes use compare-before-write protection, and symlinked targets are refused.
+
+### Upgrade a StackPilot-managed golden path
+
+Preview a lifecycle migration:
+
+```bash
+stackpilot upgrade .
+```
+
+Apply it explicitly:
+
+```bash
+stackpilot upgrade . --apply
+```
+
+Golden-path versioning is independent from the `.stackpilot.toml` schema version. V0.2 introduces **golden path v2** and a deterministic migration from legacy v1 projects. The first lifecycle migration normalizes legacy metadata and brings CI-enabled StackPilot projects onto the managed V0.2 security foundation while preserving application source files.
+
+### Security baseline
+
+CI-enabled V0.2 golden paths include ecosystem-aware Dependabot configuration plus a hardened security workflow with dependency, secret and misconfiguration scanning, CycloneDX SBOM generation, conditional container image scanning, and explicit read-only GitHub Actions permissions.
+
+### AWS ECS/Fargate deployment intelligence
+
+For verified Dockerized AWS backend golden paths, `inspect` can recommend AWS ECS/Fargate. Explicit remediation can generate additive Terraform for:
+
+- Amazon ECR
+- ECS/Fargate cluster, task and service
+- Application Load Balancer and target group
+- IAM execution/task roles
+- CloudWatch logs and container insights
+- `/health` load-balancer health checks
+- deployment variables and outputs
+
+VPC and subnet topology remain explicit inputs. StackPilot generates the deployment foundation; it does not become a long-running cloud deployment control plane.
+
+<a href="#readme-top">↑ back to top</a>
+
 ---
 
 ## 🌀 How StackPilot works
 
 ```mermaid
 flowchart LR
-    A[Project intent] --> B[StackPilot CLI]
-    B --> C{Language}
-    C -->|Rust| D[Axum]
-    C -->|Go| E[Chi]
-    C -->|TypeScript| F[NestJS]
-    C -->|Python| G[FastAPI]
-    C -->|Java| H[Spring Boot]
-    C -->|C#| I[ASP.NET Core]
+    A[Project intent / existing repo] --> B[StackPilot CLI]
+    B --> C{Workflow}
+    C -->|new / bootstrap| D[Golden-path selector]
+    C -->|inspect| E[Deterministic repository intelligence]
+    C -->|fix| F[Safety-first remediation planner]
+    C -->|upgrade| G[Managed lifecycle migration]
 
-    D --> J[Recipe renderer]
-    E --> J
-    F --> J
-    G --> J
-    H --> J
-    I --> J
-
-    J --> K[Validation + safety]
-    K --> L[Generated repository]
-    L --> M[App]
-    L --> N[Docker]
-    L --> O[CI]
-    L --> P[Terraform]
+    D --> H[Recipe renderer]
+    H --> I[Generated repository]
+    E --> J[Readiness-v1]
+    F --> K[Preview / explicit apply]
+    G --> L[Versioned managed foundation]
 ```
 
-The engine stays independent from generated project languages. Recipes own stack-specific output; the Rust core owns selection, validation, rendering, repository operations, safety, and lifecycle behavior.
+The engine stays independent from generated project languages. Recipes own stack-specific output; the Rust core owns selection, validation, rendering, repository inspection, safety, and lifecycle behavior.
 
 ---
 
@@ -194,13 +269,14 @@ The engine stays independent from generated project languages. Recipes own stack
 | Area | StackPilot provides |
 | --- | --- |
 | **Scaffolding** | Native Rust CLI, template bootstrap, interactive and non-interactive project generation |
-| **Opinionated defaults** | `Auto` framework resolution, PostgreSQL-first database profile, AWS-first cloud profile |
-| **Delivery** | Docker policy, Compose support, language-native CI, optional Terraform foundation |
-| **Recipes** | TOML manifests, MiniJinja rendering, compound conditional recipe files |
-| **Safety** | Non-destructive planning, path-safe generation, transactional cleanup on failure |
-| **Repository lifecycle** | Git initialization, `.stackpilot.toml` project profile, template-engine cleanup |
-| **Quality** | Recipe diagnostics plus CI compatibility coverage across every golden path |
-| **Distribution** | Cross-platform release workflow and one-command installer scripts |
+| **Golden paths** | One opinionated backend framework per supported language, with deterministic recipe rendering |
+| **Repository intelligence** | Read-only inspection plus versioned `readiness-v1` scoring and CI thresholds |
+| **Remediation** | Preview-first deterministic fixes for env hygiene, Docker, CI, Terraform, health checks and StackPilot metadata |
+| **Security** | Dependabot, dependency/secret/misconfiguration scanning, SBOM generation, container scanning and least-privilege workflow permissions |
+| **Deployment** | AWS ECS/Fargate recommendation and additive Terraform deployment foundation |
+| **Lifecycle** | `.stackpilot.toml`, `golden_path_version`, preview-first `stackpilot upgrade`, source-preserving managed migrations |
+| **Safety** | Symlink refusal, ambiguity deferral, non-destructive previews, compare-before-write source protection |
+| **Distribution** | Cross-platform release workflow, bundled recipes, checksums and installed-release smoke tests |
 
 Supported alternatives include **MySQL, MongoDB, SQLite, or no database**, plus **Azure, GCP, or no cloud** where the recipe supports them.
 
@@ -227,7 +303,7 @@ StackPilot, gODtECH FORGE, and gODtECH Steward are independent products with del
                        TARGET PROJECT
 ```
 
-**StackPilot** owns project scaffolding, golden paths, recipe rendering, generated-project validation, and stack-aware readiness.
+**StackPilot** owns project scaffolding, golden paths, stack-aware readiness/remediation, deployment foundations, and managed golden-path lifecycle upgrades.
 
 **Steward** owns deterministic repository housekeeping, health findings, stable scan/report contracts, and conservative remediation.
 
@@ -235,7 +311,7 @@ StackPilot, gODtECH FORGE, and gODtECH Steward are independent products with del
 
 StackPilot can optionally consume a versioned Steward scan report as observational input. It does not copy Steward rules, invoke Steward remediation, or fold Steward health into `readiness-v1`.
 
-FORGE may orchestrate StackPilot and Steward through their public interfaces when a workflow needs both project scaffolding and repository-health evidence.
+FORGE may orchestrate StackPilot and Steward through their public interfaces when a workflow needs both project engineering and repository-health evidence.
 
 > **Boundary rule:** golden-path and stack-aware semantics belong in StackPilot; generic repository housekeeping belongs in Steward; cross-product workflow and governance belong in FORGE.
 
@@ -249,23 +325,25 @@ See the full [ecosystem overview](./docs/ecosystem.md) and the [Steward integrat
 
 ```mermaid
 graph TD
-    U[Developer / GitHub Actions] --> CLI[StackPilot CLI]
+    U[Developer / CI] --> CLI[StackPilot CLI]
 
-    CLI --> SEL[Opinionated selector]
-    CLI --> VAL[Validation + safety]
-    CLI --> OPS[Repository operations]
+    CLI --> SEL[Golden-path selector]
+    CLI --> INS[Repository inspection]
+    CLI --> FIX[Remediation planner]
+    CLI --> UP[Lifecycle upgrader]
 
     SEL --> REC[Recipe manifests]
     REC --> MJ[MiniJinja renderer]
-    MJ --> OUT[Generated project]
+    MJ --> OUT[Generated / managed repository]
 
-    VAL --> OUT
-    OPS --> OUT
+    INS --> SCORE[Readiness-v1]
+    FIX --> OUT
+    UP --> OUT
 
     OUT --> APP[Application code]
     OUT --> DOC[Docker / Compose]
-    OUT --> CI[Language-native CI]
-    OUT --> INF[Terraform infrastructure]
+    OUT --> CI[CI + security]
+    OUT --> INF[Terraform / ECS foundation]
     OUT --> CFG[.stackpilot.toml]
 ```
 
@@ -276,7 +354,8 @@ graph TD
 :3000                default application port
 Docker               container-ready output
 CI                   language-native validation/build pipeline
-.stackpilot.toml      persisted project profile
+Security             managed baseline for CI-enabled projects
+.stackpilot.toml      persisted profile + golden-path version
 Terraform            optional infrastructure foundation
 ```
 
@@ -289,8 +368,11 @@ Terraform            optional infrastructure foundation
 | `stackpilot bootstrap` | Turn the current template repository into the selected project |
 | `stackpilot new` | Generate a separate project |
 | `stackpilot plan` | Preview exactly what would be generated without writing files |
+| `stackpilot inspect` | Inspect an existing repository and calculate `readiness-v1` |
+| `stackpilot fix` | Preview or apply safe deterministic remediation |
+| `stackpilot upgrade` | Preview or apply a StackPilot-managed golden-path lifecycle migration |
 | `stackpilot recipes` | Discover available recipes |
-| `stackpilot doctor` | Run StackPilot diagnostics |
+| `stackpilot doctor` | Run StackPilot environment and recipe diagnostics |
 
 ---
 
@@ -318,7 +400,9 @@ cd StackPilot
 cargo run -- --help
 ```
 
-Maintainers should follow the release checklist in [`docs/releasing.md`](./docs/releasing.md). A release should not be announced as installable until all expected platform archives and `SHA256SUMS` are present on the GitHub release.
+Maintainers should follow the release checklist in [`docs/releasing.md`](./docs/releasing.md). A release should not be announced as installable until all expected platform archives and `SHA256SUMS` are present and the installed-release matrix is green.
+
+See [`CHANGELOG.md`](./CHANGELOG.md) for release highlights.
 
 ---
 
@@ -332,7 +416,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all
 ```
 
-StackPilot's CI also validates that every supported golden path can be generated and built consistently.
+StackPilot CI also validates the engine, website, all six generated golden paths, remediation adapters, security baseline, AWS ECS/Fargate foundation, and lifecycle upgrade contract.
 
 ---
 
@@ -342,7 +426,7 @@ StackPilot is available under the **MIT License**. See [`LICENSE`](./LICENSE).
 
 <div align="center">
 
-**Build from a golden path. Spend your time on the product.**
+**Build from a golden path. Know your readiness. Improve safely.**
 
 <a href="#readme-top">↑ back to top</a>
 
