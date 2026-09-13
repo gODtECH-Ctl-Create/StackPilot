@@ -1,0 +1,107 @@
+name: Deployment intelligence smoke
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  aws-ecs-fargate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.13.3"
+
+      - name: Build StackPilot
+        run: cargo build --locked
+
+      - name: Generate an AWS Go golden-path service
+        run: |
+          rm -rf /tmp/stackpilot-ecs-smoke
+          ./target/debug/stackpilot new stackpilot-ecs-smoke \
+            --recipe base \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" \
+            --output /tmp \
+            --non-interactive \
+            --kind "Backend API" \
+            --language Go \
+            --framework Auto \
+            --database PostgreSQL \
+            --cloud AWS \
+            --docker true \
+            --ci true \
+            --terraform true \
+            --no-git
+
+      - name: Verify deterministic recommendation
+        run: |
+          ./target/debug/stackpilot inspect /tmp/stackpilot-ecs-smoke | tee /tmp/inspect-before.txt
+          grep -q "Deployment target" /tmp/inspect-before.txt
+          grep -q "Recommended: AWS ECS/Fargate" /tmp/inspect-before.txt
+
+      - name: Verify preview is non-mutating
+        run: |
+          sha256sum /tmp/stackpilot-ecs-smoke/main.go > /tmp/source-before.sha
+          ./target/debug/stackpilot fix /tmp/stackpilot-ecs-smoke \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" \
+            --deployment aws-ecs-fargate | tee /tmp/deploy-preview.txt
+          grep -q "Preview only: no files were changed" /tmp/deploy-preview.txt
+          test ! -e /tmp/stackpilot-ecs-smoke/infra/terraform/ecs-fargate.tf
+          sha256sum -c /tmp/source-before.sha
+
+      - name: Apply ECS Fargate foundation
+        run: |
+          ./target/debug/stackpilot fix /tmp/stackpilot-ecs-smoke \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" \
+            --deployment aws-ecs-fargate \
+            --apply | tee /tmp/deploy-apply.txt
+          test -f /tmp/stackpilot-ecs-smoke/infra/terraform/ecs-fargate.tf
+          test -f /tmp/stackpilot-ecs-smoke/infra/terraform/ecs-fargate-variables.tf
+          test -f /tmp/stackpilot-ecs-smoke/infra/terraform/ecs-fargate-outputs.tf
+          grep -q 'resource "aws_ecs_service" "app"' /tmp/stackpilot-ecs-smoke/infra/terraform/ecs-fargate.tf
+          grep -q 'deployment_circuit_breaker' /tmp/stackpilot-ecs-smoke/infra/terraform/ecs-fargate.tf
+          grep -q 'path.*=.*"/health"' /tmp/stackpilot-ecs-smoke/infra/terraform/ecs-fargate.tf
+          sha256sum -c /tmp/source-before.sha
+
+      - name: Validate generated Terraform
+        run: |
+          terraform -chdir=/tmp/stackpilot-ecs-smoke/infra/terraform fmt -check -recursive
+          terraform -chdir=/tmp/stackpilot-ecs-smoke/infra/terraform init -backend=false -input=false
+          terraform -chdir=/tmp/stackpilot-ecs-smoke/infra/terraform validate
+
+      - name: Verify inspection and idempotency after apply
+        run: |
+          ./target/debug/stackpilot inspect /tmp/stackpilot-ecs-smoke | tee /tmp/inspect-after.txt
+          grep -q "AWS ECS/Fargate foundation detected" /tmp/inspect-after.txt
+          ./target/debug/stackpilot fix /tmp/stackpilot-ecs-smoke \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" \
+            --deployment aws-ecs-fargate | tee /tmp/deploy-second-preview.txt
+          grep -q "No safe automatic changes are currently required" /tmp/deploy-second-preview.txt
+
+      - name: Reject conflicting cloud intent
+        run: |
+          if ./target/debug/stackpilot fix /tmp/stackpilot-ecs-smoke \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" \
+            --cloud Azure \
+            --deployment aws-ecs-fargate > /tmp/conflict.txt 2>&1; then
+            echo "Expected cloud/deployment conflict to fail"
+            exit 1
+          fi
+          grep -q "requires AWS" /tmp/conflict.txt
+
+      - name: Defer partial deployment foundations
+        run: |
+          rm -rf /tmp/stackpilot-ecs-partial
+          cp -a /tmp/stackpilot-ecs-smoke /tmp/stackpilot-ecs-partial
+          rm /tmp/stackpilot-ecs-partial/infra/terraform/ecs-fargate-outputs.tf
+          ./target/debug/stackpilot fix /tmp/stackpilot-ecs-partial \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" \
+            --deployment aws-ecs-fargate | tee /tmp/partial.txt
+          grep -q "partial StackPilot ECS/Fargate foundation" /tmp/partial.txt
+          test ! -e /tmp/stackpilot-ecs-partial/infra/terraform/ecs-fargate-outputs.tf
