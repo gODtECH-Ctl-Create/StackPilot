@@ -5,7 +5,7 @@ import { currentTag, latestReleaseUrl } from '../data/site';
 interface Props {
   title?: string;
   description?: string;
-  current?: 'home' | 'install' | 'docs' | 'golden-paths';
+  current?: 'home' | 'install' | 'docs' | 'golden-paths' | 'ecosystem';
 }
 
 const {
@@ -41,6 +41,7 @@ const href = (path = '') => `${base}${path}`;
           <a class:list={[{ active: current === 'install' }]} href={href('install/')}>Install</a>
           <a class:list={[{ active: current === 'docs' }]} href={href('docs/')}>Docs</a>
           <a class:list={[{ active: current === 'golden-paths' }]} href={href('golden-paths/')}>Golden paths</a>
+          <a class:list={[{ active: current === 'ecosystem' }]} href={href('ecosystem/')}>Ecosystem</a>
           <a class="github-link" href="https://github.com/gODtECH-Ctl-Create/StackPilot" target="_blank" rel="noreferrer">GitHub ↗</a>
         </nav>
       </div>
@@ -58,6 +59,8 @@ const href = (path = '') => `${base}${path}`;
         </div>
         <div class="footer-links">
           <a href={href('docs/')}>Documentation</a>
+          <a href={href('golden-paths/')}>Golden paths</a>
+          <a href={href('ecosystem/')}>Ecosystem</a>
           <a href={href('install/')}>Install</a>
           <a href="https://github.com/gODtECH-Ctl-Create/StackPilot" target="_blank" rel="noreferrer">Source</a>
         </div>

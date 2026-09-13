@@ -16,6 +16,10 @@ const href = (path = '') => `${base}${path}`;
         <a class="button" href={href('docs/')}>Read the docs</a>
       </div>
 
+      <div style="margin:34px 0 24px">
+        <img src={href('stackpilot-hero.svg')} alt="StackPilot production-minded scaffolding header" style="display:block;width:100%;height:auto;border:1px solid var(--border);border-radius:20px" />
+      </div>
+
       <div class="terminal" aria-label="StackPilot terminal example">
         <div class="terminal-top">
           <div class="terminal-dots"><span></span><span></span><span></span></div>
@@ -157,6 +161,21 @@ const href = (path = '') => `${base}${path}`;
         <div class="flow-step"><b>02</b><strong>Preview the plan</strong><span>Use <code>stackpilot plan</code> to inspect exactly what will be generated.</span></div>
         <div class="flow-step"><b>03</b><strong>Generate</strong><span>StackPilot applies the blessed framework and engineering foundation.</span></div>
         <div class="flow-step"><b>04</b><strong>Ship features</strong><span>Start in application code instead of spending day one on repository setup.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="ecosystem">
+    <div class="shell">
+      <div class="section-head">
+        <div class="section-kicker">gODtECH ecosystem</div>
+        <h2>Build it. Keep it healthy. Govern the work.</h2>
+        <p class="section-lead">StackPilot, gODtECH Steward and gODtECH FORGE are independent products with clear boundaries. StackPilot scaffolds, Steward maintains repository health, and FORGE orchestrates governed engineering workflows.</p>
+      </div>
+      <div class="grid grid-3">
+        <div class="card"><span class="card-label">01 / FORGE</span><h3>Orchestrate</h3><p>Prepare bounded context, classify risk, govern approvals, coordinate workflows and collect evidence.</p><a class="button" href="https://github.com/gODtECH-Ctl-Create/gODtECH-FORGE" target="_blank" rel="noreferrer">Explore FORGE ↗</a></div>
+        <div class="card"><span class="card-label">02 / STACKPILOT</span><h3>Scaffold</h3><p>Choose golden paths, render recipes, validate generated project structure and keep stack-aware readiness here.</p><a class="button button-primary" href={href('ecosystem/')}>Ecosystem page</a></div>
+        <div class="card"><span class="card-label">03 / STEWARD</span><h3>Maintain</h3><p>Scan repositories deterministically, report health findings and apply only explicit, conservative maintenance fixes.</p><a class="button" href="https://github.com/gODtECH-Ctl-Create/gODtECH-Steward" target="_blank" rel="noreferrer">Explore Steward ↗</a></div>
       </div>
     </div>
   </section>
