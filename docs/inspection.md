@@ -1,6 +1,6 @@
 # Repository inspection
 
-> Development status: `stackpilot inspect` and readiness scoring are part of the V0.2 work on `main` and are not included in the current v0.1.2 binary release yet.
+`stackpilot inspect` and the versioned `readiness-v1` model ship in StackPilot v0.2.0.
 
 StackPilot's repository intelligence is deterministic and read-only. It inspects repository structure and bounded text configuration/source files, reports what it can prove, calculates an explainable production-readiness score, and highlights concrete gaps without modifying the repository.
 
@@ -41,7 +41,7 @@ The initial scoring contract is versioned as `readiness-v1` and totals 100 point
 
 A passed control receives its full weight, a warning receives half credit using integer points, and a missing control receives zero. The model is intentionally explicit and deterministic: the same repository state produces the same score under the same model version.
 
-`.stackpilot.toml` is still reported as useful project metadata, but it does not affect readiness-v1. Existing repositories are not penalized merely because they were not created by StackPilot.
+`.stackpilot.toml`, the V0.2 security checks, and deployment recommendations are reported as additional findings but do not change the `readiness-v1` weighting. Existing CI thresholds therefore keep the same meaning as StackPilot adds new informational controls.
 
 ## Current detection
 
@@ -54,7 +54,11 @@ The inspection pass detects:
 - Terraform configuration;
 - common health/readiness endpoint conventions;
 - environment example and `.env` ignore hygiene;
-- `.stackpilot.toml` project metadata.
+- `.stackpilot.toml` project metadata;
+- dependency lockfiles and dependency-update automation;
+- dependency, secret and container scanning signals;
+- SBOM generation and GitHub Actions permission posture;
+- supported deployment-foundation signals, including AWS ECS/Fargate recommendation/detection.
 
 Dependency/build directories such as `node_modules`, `target`, `dist`, `build`, virtual environments and `.git` are skipped. Symlinked directories/files are not followed. Text inspection is bounded by file size and directory depth so `inspect` remains predictable on normal repositories.
 
@@ -82,13 +86,6 @@ Controls
 ✗ [Infrastructure] Terraform 0/15 — No Terraform configuration detected
 ✓ [Security      ] Environment config 25/25 — Safe example detected and .env is ignored
 ✓ [Operability   ] Health check 15/15 — Health/readiness endpoint convention detected
-
-Additional findings
-! StackPilot metadata — .stackpilot.toml not found
-
-Recommendations: 2
-  - Add infrastructure-as-code when the service owns deployable infrastructure.
-  - Add StackPilot project metadata so future remediation and upgrades can track repository intent.
 ```
 
 With a policy threshold:
@@ -106,9 +103,9 @@ An ignored local `.env` file is normal developer behavior and is not treated as 
 
 ## Model boundaries
 
-`readiness-v1` is deliberately small. It scores only controls that the current deterministic inspection layer can support reliably. Security scanning, SBOMs, dependency update automation, image scanning and more advanced operability checks are separate roadmap stages; they can extend a future versioned readiness model without silently changing the meaning of `readiness-v1`.
+`readiness-v1` deliberately scores only the seven controls established by its published contract. V0.2 also reports richer security and deployment findings, but those remain informational so the 0–100 score does not silently change meaning.
 
-`stackpilot inspect` still does not modify repository files, infer architecture from runtime behavior, or use AI/LLMs to judge repositories. Automated remediation comes after the readiness model.
+`stackpilot inspect` does not modify repository files, infer architecture from runtime behavior, or use AI/LLMs to judge repositories. Safe deterministic remediation is a separate explicit workflow through `stackpilot fix`.
 
 ## Optional gODtECH Steward integration
 
