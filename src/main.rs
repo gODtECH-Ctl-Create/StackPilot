@@ -10,6 +10,7 @@ mod scaffold;
 mod security;
 mod spec;
 mod steward;
+mod upgrade;
 
 use std::{env, path::PathBuf};
 
@@ -207,6 +208,21 @@ enum Commands {
         apply: bool,
     },
 
+    /// Preview or apply a StackPilot-managed golden-path lifecycle upgrade.
+    Upgrade {
+        /// StackPilot-managed repository to upgrade. Defaults to the current directory.
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Directory that contains StackPilot recipes used by lifecycle migrations.
+        #[arg(long, default_value = "recipes")]
+        recipes_dir: PathBuf,
+
+        /// Apply the planned managed-foundation changes. Without this flag, upgrade is a preview.
+        #[arg(long)]
+        apply: bool,
+    },
+
     /// List available StackPilot recipes.
     Recipes {
         /// Directory that contains StackPilot recipes.
@@ -315,6 +331,14 @@ fn main() -> Result<()> {
                 deployment.as_deref(),
                 apply,
             )?;
+        }
+        Commands::Upgrade {
+            path,
+            recipes_dir,
+            apply,
+        } => {
+            let recipes_dir = resolve_recipes_dir(recipes_dir);
+            upgrade::run(&path, &recipes_dir, apply)?;
         }
         Commands::Recipes { recipes_dir } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
