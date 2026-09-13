@@ -1,4 +1,7 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
@@ -243,7 +246,10 @@ fn validate_profile(profile: &ProfileDocument) -> Result<()> {
         );
     }
     if !matches!(
-        (profile.project.language.as_str(), profile.project.framework.as_str()),
+        (
+            profile.project.language.as_str(),
+            profile.project.framework.as_str()
+        ),
         ("Rust", "Axum")
             | ("Go", "Chi")
             | ("TypeScript", "NestJS")
