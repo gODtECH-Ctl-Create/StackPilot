@@ -1,0 +1,131 @@
+name: Golden path upgrade smoke
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade-v1-to-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Build StackPilot
+        run: cargo build --locked
+
+      - name: Verify new projects record golden path v2
+        run: |
+          rm -rf /tmp/stackpilot-upgrade-current
+          ./target/debug/stackpilot new stackpilot-upgrade-current \
+            --recipe base \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" \
+            --output /tmp \
+            --non-interactive \
+            --kind "Backend API" \
+            --language Go \
+            --framework Auto \
+            --database PostgreSQL \
+            --cloud AWS \
+            --docker true \
+            --ci true \
+            --terraform true \
+            --no-git
+          grep -q '^golden_path_version = 2$' /tmp/stackpilot-upgrade-current/.stackpilot.toml
+
+      - name: Create a legacy StackPilot v1 fixture
+        run: |
+          rm -rf /tmp/stackpilot-upgrade-v1
+          cp -a /tmp/stackpilot-upgrade-current /tmp/stackpilot-upgrade-v1
+          rm /tmp/stackpilot-upgrade-v1/.github/workflows/security.yml
+          rm /tmp/stackpilot-upgrade-v1/.github/dependabot.yml
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/stackpilot-upgrade-v1/.stackpilot.toml')
+          text = path.read_text()
+          text = '\n'.join(
+              line for line in text.splitlines()
+              if not line.startswith('golden_path_version =')
+          ) + '\n'
+          text = text.replace(' = true', ' = True').replace(' = false', ' = False')
+          path.write_text(text)
+          PY
+          sha256sum /tmp/stackpilot-upgrade-v1/main.go > /tmp/upgrade-source-before.sha
+
+      - name: Verify upgrade preview is non-mutating
+        run: |
+          cp /tmp/stackpilot-upgrade-v1/.stackpilot.toml /tmp/metadata-before.toml
+          ./target/debug/stackpilot upgrade /tmp/stackpilot-upgrade-v1 \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" | tee /tmp/upgrade-preview.txt
+          grep -q 'Golden path: v1 -> v2' /tmp/upgrade-preview.txt
+          grep -q 'Preview only: no files were changed' /tmp/upgrade-preview.txt
+          grep -q '.github/workflows/security.yml' /tmp/upgrade-preview.txt
+          grep -q '.github/dependabot.yml' /tmp/upgrade-preview.txt
+          cmp /tmp/metadata-before.toml /tmp/stackpilot-upgrade-v1/.stackpilot.toml
+          test ! -e /tmp/stackpilot-upgrade-v1/.github/workflows/security.yml
+          test ! -e /tmp/stackpilot-upgrade-v1/.github/dependabot.yml
+          sha256sum -c /tmp/upgrade-source-before.sha
+
+      - name: Apply v1 to v2 upgrade
+        run: |
+          ./target/debug/stackpilot upgrade /tmp/stackpilot-upgrade-v1 \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" \
+            --apply | tee /tmp/upgrade-apply.txt
+          grep -q 'Applied StackPilot golden-path upgrade 1 -> 2' /tmp/upgrade-apply.txt
+          grep -q '^golden_path_version = 2$' /tmp/stackpilot-upgrade-v1/.stackpilot.toml
+          grep -q '^docker = true$' /tmp/stackpilot-upgrade-v1/.stackpilot.toml
+          grep -q '^ci = true$' /tmp/stackpilot-upgrade-v1/.stackpilot.toml
+          grep -q '^terraform = true$' /tmp/stackpilot-upgrade-v1/.stackpilot.toml
+          test -f /tmp/stackpilot-upgrade-v1/.github/workflows/security.yml
+          test -f /tmp/stackpilot-upgrade-v1/.github/dependabot.yml
+          sha256sum -c /tmp/upgrade-source-before.sha
+
+      - name: Verify upgraded security foundation and idempotency
+        run: |
+          ./target/debug/stackpilot inspect /tmp/stackpilot-upgrade-v1 | tee /tmp/upgrade-inspect.txt
+          grep -q 'Dependency update automation' /tmp/upgrade-inspect.txt
+          grep -q 'Dependency scanning' /tmp/upgrade-inspect.txt
+          grep -q 'Secret scanning' /tmp/upgrade-inspect.txt
+          grep -q 'SBOM generation' /tmp/upgrade-inspect.txt
+          grep -q 'Container scanning' /tmp/upgrade-inspect.txt
+          ./target/debug/stackpilot upgrade /tmp/stackpilot-upgrade-v1 \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" | tee /tmp/upgrade-second.txt
+          grep -q 'Golden path: v2 -> v2' /tmp/upgrade-second.txt
+          grep -q 'Status: already current' /tmp/upgrade-second.txt
+          sha256sum -c /tmp/upgrade-source-before.sha
+
+      - name: Refuse incompatible custom managed security files
+        run: |
+          rm -rf /tmp/stackpilot-upgrade-custom
+          cp -a /tmp/stackpilot-upgrade-v1 /tmp/stackpilot-upgrade-custom
+          python - <<'PY'
+          from pathlib import Path
+          metadata = Path('/tmp/stackpilot-upgrade-custom/.stackpilot.toml')
+          metadata.write_text(metadata.read_text().replace('golden_path_version = 2', 'golden_path_version = 1'))
+          Path('/tmp/stackpilot-upgrade-custom/.github/workflows/security.yml').write_text(
+              'name: Custom security\npermissions:\n  contents: read\njobs: {}\n'
+          )
+          PY
+          if ./target/debug/stackpilot upgrade /tmp/stackpilot-upgrade-custom \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" > /tmp/upgrade-custom.txt 2>&1; then
+            echo 'Expected incompatible managed security files to block the upgrade'
+            exit 1
+          fi
+          grep -q 'will not overwrite custom .github security/dependency files' /tmp/upgrade-custom.txt
+
+      - name: Refuse repositories without StackPilot metadata
+        run: |
+          rm -rf /tmp/stackpilot-upgrade-unmanaged
+          mkdir -p /tmp/stackpilot-upgrade-unmanaged
+          echo 'package main' > /tmp/stackpilot-upgrade-unmanaged/main.go
+          if ./target/debug/stackpilot upgrade /tmp/stackpilot-upgrade-unmanaged \
+            --recipes-dir "$GITHUB_WORKSPACE/recipes" > /tmp/upgrade-unmanaged.txt 2>&1; then
+            echo 'Expected unmanaged repository upgrade to fail'
+            exit 1
+          fi
+          grep -q 'not a StackPilot-managed repository' /tmp/upgrade-unmanaged.txt
