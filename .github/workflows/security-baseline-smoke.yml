@@ -1,0 +1,99 @@
+name: Security baseline smoke
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'recipes/**'
+      - '.github/workflows/security-baseline-smoke.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'recipes/**'
+      - '.github/workflows/security-baseline-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  security-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build StackPilot
+        run: cargo build --locked
+
+      - name: Generate a secured golden path
+        run: |
+          rm -rf /tmp/stackpilot-security-smoke
+          mkdir -p /tmp/stackpilot-security-smoke
+          ./target/debug/stackpilot new secured-api \
+            --recipe base \
+            --output /tmp/stackpilot-security-smoke \
+            --non-interactive \
+            --kind 'Backend API' \
+            --language Go \
+            --framework Chi \
+            --database PostgreSQL \
+            --cloud AWS \
+            --docker true \
+            --ci true \
+            --terraform false \
+            --no-git
+
+          repo=/tmp/stackpilot-security-smoke/secured-api
+          test -f "$repo/.github/workflows/security.yml"
+          test -f "$repo/.github/dependabot.yml"
+          grep -q 'aquasecurity/trivy-action@v0.36.0' "$repo/.github/workflows/security.yml"
+          grep -q 'actions/upload-artifact@v6' "$repo/.github/workflows/security.yml"
+          grep -q '^permissions:' "$repo/.github/workflows/security.yml"
+          grep -q 'contents: read' "$repo/.github/workflows/security.yml"
+          grep -q 'package-ecosystem: gomod' "$repo/.github/dependabot.yml"
+          grep -q 'package-ecosystem: github-actions' "$repo/.github/dependabot.yml"
+
+          ./target/debug/stackpilot inspect "$repo" > generated-inspect.txt
+          grep -q 'Dependency update automation' generated-inspect.txt
+          grep -q 'Dependency vulnerability scanning detected in CI' generated-inspect.txt
+          grep -q 'Secret scanning detected in CI' generated-inspect.txt
+          grep -q 'SBOM generation detected in CI' generated-inspect.txt
+          grep -q 'Container image scanning detected in CI' generated-inspect.txt
+          grep -q 'Explicit permissions detected in all' generated-inspect.txt
+
+      - name: Verify security remediation preview, apply and idempotency
+        run: |
+          repo=/tmp/stackpilot-security-smoke/secured-api
+          rm "$repo/.github/workflows/security.yml"
+          rm "$repo/.github/dependabot.yml"
+
+          ./target/debug/stackpilot fix "$repo" --security > security-preview.txt
+          grep -q 'create .github/workflows/security.yml' security-preview.txt
+          grep -q 'create .github/dependabot.yml' security-preview.txt
+          test ! -e "$repo/.github/workflows/security.yml"
+          test ! -e "$repo/.github/dependabot.yml"
+
+          ./target/debug/stackpilot fix "$repo" --security --apply > security-apply.txt
+          test -f "$repo/.github/workflows/security.yml"
+          test -f "$repo/.github/dependabot.yml"
+
+          ./target/debug/stackpilot inspect "$repo" > remediated-inspect.txt
+          grep -q 'Dependency update automation' remediated-inspect.txt
+          grep -q 'Dependency vulnerability scanning detected in CI' remediated-inspect.txt
+          grep -q 'Secret scanning detected in CI' remediated-inspect.txt
+          grep -q 'SBOM generation detected in CI' remediated-inspect.txt
+          grep -q 'Container image scanning detected in CI' remediated-inspect.txt
+
+          ./target/debug/stackpilot fix "$repo" --security > second-preview.txt
+          if grep -q 'create .github/workflows/security.yml' second-preview.txt; then
+            echo 'security remediation unexpectedly planned an existing security workflow'
+            exit 1
+          fi
+          if grep -q 'create .github/dependabot.yml' second-preview.txt; then
+            echo 'security remediation unexpectedly planned an existing Dependabot configuration'
+            exit 1
+          fi
