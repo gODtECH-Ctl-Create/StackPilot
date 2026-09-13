@@ -493,7 +493,7 @@ fn detect_health_check(files: &[PathBuf]) -> bool {
     ];
 
     files.iter().any(|path| {
-        is_source_or_config_file(path)
+        is_application_source_file(path)
             && read_small_text(path).is_some_and(|content| {
                 let content = content.to_ascii_lowercase();
                 HEALTH_MARKERS.iter().any(|marker| content.contains(marker))
@@ -594,29 +594,14 @@ fn gitignore_protects_env(content: &str) -> bool {
     })
 }
 
-fn is_source_or_config_file(path: &Path) -> bool {
+fn is_application_source_file(path: &Path) -> bool {
     let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
         return false;
     };
 
     matches!(
         extension.to_ascii_lowercase().as_str(),
-        "rs" | "go"
-            | "ts"
-            | "tsx"
-            | "js"
-            | "jsx"
-            | "mjs"
-            | "cjs"
-            | "py"
-            | "java"
-            | "cs"
-            | "json"
-            | "toml"
-            | "yml"
-            | "yaml"
-            | "xml"
-            | "gradle"
+        "rs" | "go" | "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "py" | "java" | "cs"
     )
 }
 
@@ -755,6 +740,36 @@ mod tests {
                 .expect("environment finding")
                 .status,
             FindingStatus::Warning
+        );
+    }
+
+    #[test]
+    fn health_probe_in_config_does_not_replace_application_endpoint() {
+        let repo = tempdir().expect("repository");
+        fs::write(
+            repo.path().join("compose.yaml"),
+            "services:
+  app:
+    healthcheck:
+      test: [CMD, curl, http://localhost:3000/health]
+",
+        )
+        .expect("compose");
+        fs::write(
+            repo.path().join("main.go"),
+            "package main
+func main() {}
+",
+        )
+        .expect("source");
+
+        let report = inspect_repository(repo.path()).expect("inspection");
+        assert_eq!(
+            report
+                .finding("Health check")
+                .expect("health finding")
+                .status,
+            FindingStatus::Missing
         );
     }
 }
