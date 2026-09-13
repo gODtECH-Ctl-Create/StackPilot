@@ -59,12 +59,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Detect Dockerfile
+        id: dockerfile
+        run: |
+          if [ -f Dockerfile ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build container for scanning
-        if: ${{ hashFiles('Dockerfile') != '' }}
+        if: steps.dockerfile.outputs.present == 'true'
         run: docker build -t stackpilot-security-scan:ci .
 
       - name: Scan container image
-        if: ${{ hashFiles('Dockerfile') != '' }}
+        if: steps.dockerfile.outputs.present == 'true'
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
