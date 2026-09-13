@@ -51,7 +51,8 @@ pub fn inspect(root: &Path) -> Result<Vec<Finding>> {
     let secret_scan = contains_any(
         &workflow_lower,
         &["gitleaks", "trufflehog", "detect-secrets"],
-    ) || (workflow_lower.contains("trivy-action") && workflow_lower.contains("secret"));
+    ) || (workflow_lower.contains("trivy-action")
+        && workflow_lower.contains("secret"));
     let sbom = contains_any(
         &workflow_lower,
         &["sbom-action", "cyclonedx", "syft", "spdx-json", "spdx"],
