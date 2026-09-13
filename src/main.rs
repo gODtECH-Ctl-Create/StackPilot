@@ -6,6 +6,7 @@ mod inspect;
 mod readiness;
 mod recipe;
 mod scaffold;
+mod security;
 mod spec;
 mod steward;
 
@@ -192,6 +193,10 @@ enum Commands {
         #[arg(long, value_name = "CLOUD")]
         cloud: Option<String>,
 
+        /// Add the StackPilot security baseline (Dependabot plus hardened scanning workflow).
+        #[arg(long)]
+        security: bool,
+
         /// Write the planned safe changes. Without this flag, fix is a dry-run preview.
         #[arg(long)]
         apply: bool,
@@ -292,10 +297,11 @@ fn main() -> Result<()> {
             path,
             recipes_dir,
             cloud,
+            security,
             apply,
         } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
-            fix::run(&path, &recipes_dir, cloud.as_deref(), apply)?;
+            fix::run(&path, &recipes_dir, cloud.as_deref(), security, apply)?;
         }
         Commands::Recipes { recipes_dir } => {
             let recipes_dir = resolve_recipes_dir(recipes_dir);
