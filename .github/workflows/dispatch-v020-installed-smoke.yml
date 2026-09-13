@@ -1,0 +1,33 @@
+name: Dispatch v0.2.0 installed smoke helper
+
+on:
+  push:
+    branches:
+      - release/v0.2.0
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  dispatch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify published v0.2.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view v0.2.0 --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease \
+            --jq 'select(.tagName == "v0.2.0" and .isDraft == false and .isPrerelease == false) | .tagName' \
+            | grep -q '^v0.2.0$'
+
+      - name: Dispatch installed-release verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run release-smoke.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag=v0.2.0
