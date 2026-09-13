@@ -1,0 +1,76 @@
+name: Patch FastAPI health contract
+
+on:
+  push:
+    branches:
+      - feat/fix-health
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/fix-health
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Preserve FastAPI health response contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/fix.rs')
+          text = path.read_text()
+
+          text = text.replace(
+              '("Python", "FastAPI") => plan_fastapi_health(root, updates),',
+              '("Python", "FastAPI") => plan_fastapi_health(root, &profile, updates),',
+              1,
+          )
+          text = text.replace(
+              '''fn plan_fastapi_health(\n    root: &Path,\n    updates: &mut Vec<PlannedUpdate>,''',
+              '''fn plan_fastapi_health(\n    root: &Path,\n    profile: &StackProfile,\n    updates: &mut Vec<PlannedUpdate>,''',
+              1,
+          )
+          text = text.replace(
+              '''        "{original}{separator}@app.get(\\\"/health\\\")\\ndef stackpilot_health() -> dict[str, str]:\\n    return {{\\\"status\\\": \\\"ok\\\"}}\\n"\n    );''',
+              '''        "{original}{separator}@app.get(\\\"/health\\\")\\ndef stackpilot_health() -> dict[str, str]:\\n    return {{\\\"status\\\": \\\"ok\\\", \\\"service\\\": \\\"{}\\\"}}\\n",\n        profile.project_name\n    );''',
+              1,
+          )
+
+          old_python_profile = '''            if !pyproject.contains("[project.optional-dependencies]")\n                || !pyproject.contains("dev =")\n                || !main.contains("FastAPI(")\n                || !main.contains("app =")\n            {\n                return Err(\n                    "FastAPI auto-remediation requires pyproject dev extras and an app/main.py application named app"\n                        .to_string(),\n                );\n            }\n            "app".to_string()'''
+          new_python_profile = '''            if !pyproject.contains("[project.optional-dependencies]")\n                || !pyproject.contains("dev =")\n                || !main.contains("FastAPI(")\n                || !main.contains("app =")\n            {\n                return Err(\n                    "FastAPI auto-remediation requires pyproject dev extras and an app/main.py application named app"\n                        .to_string(),\n                );\n            }\n            pyproject_package_name(&pyproject)?'''
+          if old_python_profile not in text:
+              raise SystemExit('FastAPI profile block not found')
+          text = text.replace(old_python_profile, new_python_profile, 1)
+
+          marker = '''fn cargo_package_name(root: &Path) -> std::result::Result<String, String> {'''
+          helper = '''fn pyproject_package_name(content: &str) -> std::result::Result<String, String> {\n    let manifest: toml::Value = toml::from_str(content)\n        .map_err(|error| format!("pyproject.toml could not be parsed safely: {error}"))?;\n    manifest\n        .get("project")\n        .and_then(|project| project.get("name"))\n        .and_then(toml::Value::as_str)\n        .map(str::to_string)\n        .ok_or_else(|| {\n            "FastAPI auto-remediation requires [project].name in pyproject.toml".to_string()\n        })\n}\n\n'''
+          if marker not in text:
+              raise SystemExit('cargo helper marker not found')
+          text = text.replace(marker, helper + marker, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Validate
+        run: |
+          cargo fmt --all
+          cargo check --locked
+          cargo clippy --locked --all-targets --all-features -- -D warnings
+          cargo test --locked --all
+
+      - name: Commit product fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/fix.rs
+          git commit -m 'fix: preserve FastAPI health response contract'
+          git push origin HEAD:feat/fix-health
