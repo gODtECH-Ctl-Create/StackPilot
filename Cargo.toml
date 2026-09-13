@@ -1,8 +1,8 @@
 [package]
 name = "stackpilot"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
-description = "Opinionated production project scaffolding across major application ecosystems"
+description = "Opinionated project scaffolding, repository readiness, remediation, and golden-path lifecycle tooling"
 license = "MIT"
 repository = "https://github.com/gODtECH-Ctl-Create/StackPilot"
 readme = "README.md"
