@@ -7,7 +7,32 @@ text = text.replace(
     '        is_application_source_file(path)\n            && read_small_text(path).is_some_and(|content| {',
     1,
 )
-marker = 'fn is_source_or_config_file(path: &Path) -> bool {\n'
+old_helper = '''fn is_source_or_config_file(path: &Path) -> bool {
+    let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
+        return false;
+    };
+
+    matches!(
+        extension.to_ascii_lowercase().as_str(),
+        "rs" | "go"
+            | "ts"
+            | "tsx"
+            | "js"
+            | "jsx"
+            | "mjs"
+            | "cjs"
+            | "py"
+            | "java"
+            | "cs"
+            | "json"
+            | "toml"
+            | "yml"
+            | "yaml"
+            | "xml"
+            | "gradle"
+    )
+}
+'''
 helper = '''fn is_application_source_file(path: &Path) -> bool {
     let Some(extension) = path.extension().and_then(|extension| extension.to_str()) else {
         return false;
@@ -18,11 +43,10 @@ helper = '''fn is_application_source_file(path: &Path) -> bool {
         "rs" | "go" | "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "py" | "java" | "cs"
     )
 }
-
 '''
-if marker not in text:
-    raise SystemExit('source/config helper marker not found')
-text = text.replace(marker, helper + marker, 1)
+if old_helper not in text:
+    raise SystemExit('source/config helper body not found')
+text = text.replace(old_helper, helper, 1)
 idx = text.rfind('\n}')
 if idx == -1:
     raise SystemExit('test module end not found')
