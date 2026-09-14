@@ -2,6 +2,25 @@
 
 All notable StackPilot releases are summarized here. Release tags remain the authoritative immutable release points.
 
+## v0.2.4 — 14 September 2026
+
+### Repository-scope remediation safety
+
+- External field validation against `fastapi/full-stack-fastapi-template` exposed a nested-remediation ownership bug.
+- Nested service inspection continues to surface repository-root environment findings such as a tracked `.env` without ignore protection.
+- `fix <nested-service>` now defers inherited repository-owned environment remediation instead of creating misleading service-local `.env.example` or `.gitignore` changes.
+- Standalone repository environment remediation remains unchanged.
+- Added permanent FastAPI-shaped regression coverage to the monorepo-awareness smoke suite.
+- `readiness-v1` scoring weights remain unchanged.
+
+## v0.2.3 — 14 September 2026
+
+### Shared gODtECH CLI identity
+
+- Added the canonical gODtECH terminal identity to interactive StackPilot commands.
+- Preserved clean output for version/help/non-interactive automation paths.
+- Kept release/install/runtime behavior unchanged apart from CLI identity presentation.
+
 ## v0.2.2 — 14 September 2026
 
 ### Centralized container awareness

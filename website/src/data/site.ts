@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export const site = {
-  currentVersion: '0.2.3',
+  currentVersion: '0.2.4',
   releaseDate: '14 September 2026',
   goldenPathCount: 6,
   nativeReleaseTargetCount: 4,
@@ -70,6 +70,12 @@ export const site = {
       title: 'Shared gODtECH CLI identity',
       summary:
         'Adds the canonical gODtECH terminal identity to interactive StackPilot commands while preserving clean non-interactive, help, version, and automation output.',
+    },
+    {
+      version: 'v0.2.4',
+      title: 'Repository-scope remediation safety',
+      summary:
+        'External FastAPI field validation hardened nested remediation so repository-owned environment findings remain visible but are deferred to repository scope instead of creating misleading service-local env files.',
     },
   ],
 } as const;
