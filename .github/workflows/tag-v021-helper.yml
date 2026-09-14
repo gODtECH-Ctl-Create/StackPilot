@@ -1,0 +1,36 @@
+name: Tag v0.2.1 helper
+
+on:
+  push:
+    branches:
+      - release/v0.2.1
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create guarded v0.2.1 tag
+        shell: bash
+        env:
+          RELEASE_SHA: fd1d0b8e156a96cec853a0a14cfcbcd3e6c5c147
+        run: |
+          set -euo pipefail
+          git fetch origin main --tags
+          test "$(git rev-parse origin/main)" = "$RELEASE_SHA"
+          if git rev-parse -q --verify refs/tags/v0.2.1 >/dev/null; then
+            echo 'v0.2.1 already exists; refusing to move it'
+            exit 1
+          fi
+          git config user.name "gODtECH-Ctl-Create"
+          git config user.email "ayoabe24@gmail.com"
+          git tag -a v0.2.1 "$RELEASE_SHA" -m "StackPilot v0.2.1"
+          git push origin refs/tags/v0.2.1
