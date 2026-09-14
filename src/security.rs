@@ -19,10 +19,14 @@ const LOCKFILES: &[&str] = &[
 ];
 
 pub fn inspect(root: &Path) -> Result<Vec<Finding>> {
-    inspect_scoped(root, root)
+    inspect_scoped(root, root, has_direct_dockerfile(root))
 }
 
-pub fn inspect_scoped(repository_root: &Path, target_root: &Path) -> Result<Vec<Finding>> {
+pub fn inspect_scoped(
+    repository_root: &Path,
+    _target_root: &Path,
+    target_has_dockerfile: bool,
+) -> Result<Vec<Finding>> {
     let workflow_text = read_workflows(repository_root)?;
     let workflow_lower = workflow_text.to_ascii_lowercase();
 
@@ -126,7 +130,7 @@ pub fn inspect_scoped(repository_root: &Path, target_root: &Path) -> Result<Vec<
             container_scan,
             if container_scan {
                 "Container image scanning detected in CI".to_string()
-            } else if target_root.join("Dockerfile").is_file() {
+            } else if target_has_dockerfile {
                 "Dockerfile detected without a container image scan".to_string()
             } else {
                 "No container image scan detected; target does not expose a Dockerfile".to_string()
@@ -291,6 +295,26 @@ fn read_workflows(root: &Path) -> Result<String> {
         }
     }
     Ok(combined)
+}
+
+fn has_direct_dockerfile(root: &Path) -> bool {
+    let Ok(entries) = fs::read_dir(root) else {
+        return false;
+    };
+    entries.flatten().any(|entry| {
+        let path = entry.path();
+        if !path.is_file() {
+            return false;
+        }
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .map(str::to_ascii_lowercase)
+            .is_some_and(|name| {
+                name == "dockerfile"
+                    || name.starts_with("dockerfile.")
+                    || name.ends_with(".dockerfile")
+            })
+    })
 }
 
 fn contains_any(content: &str, markers: &[&str]) -> bool {
