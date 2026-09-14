@@ -1,0 +1,102 @@
+name: Monorepo awareness smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  monorepo-awareness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build StackPilot
+        run: cargo build --locked
+
+      - name: Exercise nested service scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN="$GITHUB_WORKSPACE/target/debug/stackpilot"
+          ROOT="$(mktemp -d)/mortgageops"
+          SERVICE="$ROOT/services/api"
+
+          mkdir -p "$ROOT/.git" "$ROOT/.github/workflows" "$SERVICE/src"
+          cat > "$ROOT/.github/workflows/ci.yml" <<'YAML'
+          name: CI
+          permissions:
+            contents: read
+          YAML
+          printf 'PORT=3000\n' > "$ROOT/.env.example"
+          printf '.env\n' > "$ROOT/.gitignore"
+          printf "lockfileVersion: '9.0'\n" > "$ROOT/pnpm-lock.yaml"
+
+          cat > "$SERVICE/package.json" <<'JSON'
+          {
+            "name": "@mortgageops/api",
+            "scripts": {
+              "build": "tsc -p tsconfig.json",
+              "start": "node dist/main.js"
+            },
+            "dependencies": {
+              "@nestjs/core": "12.0.1",
+              "@nestjs/platform-express": "12.0.1"
+            },
+            "devDependencies": {
+              "typescript": "7.0.2"
+            }
+          }
+          JSON
+          printf '{}\n' > "$SERVICE/tsconfig.json"
+          cat > "$SERVICE/src/main.ts" <<'TS'
+          const path = '/health';
+          console.log(path);
+          TS
+
+          "$BIN" inspect "$SERVICE" | tee /tmp/nested-inspect.txt
+          grep -F 'StackPilot Readiness: 70/100' /tmp/nested-inspect.txt
+          grep -F 'Repository root:' /tmp/nested-inspect.txt
+          grep -F 'Inherited from repository root: GitHub Actions' /tmp/nested-inspect.txt
+          grep -F 'Inherited from repository root: Safe example detected' /tmp/nested-inspect.txt
+          grep -F 'Lockfile detected (pnpm-lock.yaml)' /tmp/nested-inspect.txt
+
+          "$BIN" fix "$SERVICE" --recipes-dir "$GITHUB_WORKSPACE/recipes" | tee /tmp/nested-fix.txt
+          grep -F '+ create Dockerfile' /tmp/nested-fix.txt
+          grep -F '+ create .stackpilot.toml' /tmp/nested-fix.txt
+          if grep -Fq '+ create .github/workflows/ci.yml' /tmp/nested-fix.txt; then
+            echo 'nested CI workflow must never be planned'
+            exit 1
+          fi
+          if grep -Fq '+ create .env.example' /tmp/nested-fix.txt || grep -Fq '+ create .gitignore' /tmp/nested-fix.txt; then
+            echo 'inherited environment controls must not be recreated inside the service'
+            exit 1
+          fi
+          test ! -e "$SERVICE/Dockerfile"
+          test ! -e "$SERVICE/.stackpilot.toml"
+
+          mkdir -p "$ROOT/services/rust-api/src"
+          cat > "$ROOT/services/rust-api/Cargo.toml" <<'TOML'
+          [package]
+          name = "rust-api"
+          version = "0.1.0"
+
+          [dependencies]
+          axum = "0.8"
+          TOML
+          printf 'fn main() {}\n' > "$ROOT/services/rust-api/src/main.rs"
+
+          "$BIN" inspect "$ROOT" | tee /tmp/root-inspect.txt
+          grep -F 'aggregate repository view, not a single-service readiness score' /tmp/root-inspect.txt
+
+          "$BIN" fix "$ROOT" --recipes-dir "$GITHUB_WORKSPACE/recipes" | tee /tmp/root-fix.txt
+          grep -F '! StackPilot metadata — heterogeneous repository detected' /tmp/root-fix.txt
+          if grep -Fq '+ create .stackpilot.toml' /tmp/root-fix.txt; then
+            echo 'heterogeneous repository root must not be auto-adopted'
+            exit 1
+          fi
