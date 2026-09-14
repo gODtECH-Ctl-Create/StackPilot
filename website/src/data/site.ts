@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export const site = {
-  currentVersion: '0.2.1',
+  currentVersion: '0.2.2',
   releaseDate: '14 September 2026',
   goldenPathCount: 6,
   nativeReleaseTargetCount: 4,
@@ -58,6 +58,12 @@ export const site = {
       title: 'Monorepo awareness',
       summary:
         'Field validation hardened nested-service inspection: repository-owned controls are inherited safely, invalid nested CI placement is prevented, and heterogeneous roots defer ambiguous StackPilot adoption.',
+    },
+    {
+      version: 'v0.2.2',
+      title: 'Centralized container awareness',
+      summary:
+        'Nested services now recognize deterministic repository-centralized Dockerfile and Compose ownership, preventing duplicate container remediation and improving service readiness accuracy.',
     },
   ],
 } as const;
