@@ -1,0 +1,31 @@
+name: Dispatch v0.2.2 release helper
+
+on:
+  push:
+    branches:
+      - release/v0.2.2
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  dispatch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify immutable v0.2.2 tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v0.2.2" --jq '.ref' | grep -q '^refs/tags/v0.2.2$'
+
+      - name: Dispatch canonical release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag=v0.2.2
