@@ -39,7 +39,7 @@ pub fn print_if_interactive() {
 
 #[cfg(test)]
 mod tests {
-    use super::{should_show_identity, STACKPILOT_ASCII, STACKPILOT_UNICODE};
+    use super::{STACKPILOT_ASCII, STACKPILOT_UNICODE, should_show_identity};
 
     fn args(values: &[&str]) -> Vec<String> {
         values.iter().map(|value| (*value).to_string()).collect()
