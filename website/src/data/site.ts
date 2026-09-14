@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export const site = {
-  currentVersion: '0.2.0',
-  releaseDate: '13 September 2026',
+  currentVersion: '0.2.1',
+  releaseDate: '14 September 2026',
   goldenPathCount: 6,
   nativeReleaseTargetCount: 4,
   proofPoints: [
@@ -52,6 +52,12 @@ export const site = {
       title: 'Repository engineering',
       summary:
         'Added deterministic repository inspection, readiness-v1 scoring, safety-first remediation, managed security foundations, AWS ECS/Fargate deployment intelligence, and golden-path v2 lifecycle upgrades.',
+    },
+    {
+      version: 'v0.2.1',
+      title: 'Monorepo awareness',
+      summary:
+        'Field validation hardened nested-service inspection: repository-owned controls are inherited safely, invalid nested CI placement is prevented, and heterogeneous roots defer ambiguous StackPilot adoption.',
     },
   ],
 } as const;
