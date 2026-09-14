@@ -1,0 +1,45 @@
+name: Patch nested env scope helper
+
+on:
+  push:
+    branches:
+      - fix/nested-env-remediation-scope
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: fix/nested-env-remediation-scope
+
+      - name: Apply nested environment scope patch
+        run: python .github/scripts/patch_nested_env_scope.py
+
+      - name: Format
+        run: cargo fmt --all
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+
+      - name: Commit source change
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/fix.rs
+          if git diff --cached --quiet; then
+            echo 'No source change to commit'
+            exit 0
+          fi
+          git commit -m 'fix: defer inherited environment remediation to repository root'
+          git push origin HEAD:fix/nested-env-remediation-scope
