@@ -19,21 +19,25 @@ const LOCKFILES: &[&str] = &[
 ];
 
 pub fn inspect(root: &Path) -> Result<Vec<Finding>> {
-    let workflow_text = read_workflows(root)?;
+    inspect_scoped(root, root)
+}
+
+pub fn inspect_scoped(repository_root: &Path, target_root: &Path) -> Result<Vec<Finding>> {
+    let workflow_text = read_workflows(repository_root)?;
     let workflow_lower = workflow_text.to_ascii_lowercase();
 
     let lockfiles = LOCKFILES
         .iter()
-        .filter(|name| root.join(name).is_file())
+        .filter(|name| repository_root.join(name).is_file())
         .copied()
         .collect::<Vec<_>>();
 
-    let dependabot = root.join(".github/dependabot.yml").is_file()
-        || root.join(".github/dependabot.yaml").is_file()
-        || root.join("renovate.json").is_file()
-        || root.join("renovate.json5").is_file()
-        || root.join(".renovaterc").is_file()
-        || root.join(".renovaterc.json").is_file();
+    let dependabot = repository_root.join(".github/dependabot.yml").is_file()
+        || repository_root.join(".github/dependabot.yaml").is_file()
+        || repository_root.join("renovate.json").is_file()
+        || repository_root.join("renovate.json5").is_file()
+        || repository_root.join(".renovaterc").is_file()
+        || repository_root.join(".renovaterc.json").is_file();
 
     let dependency_scan = contains_any(
         &workflow_lower,
@@ -64,7 +68,7 @@ pub fn inspect(root: &Path) -> Result<Vec<Finding>> {
                 || workflow_lower.contains("scan-type: \"image\"")
                 || workflow_lower.contains("image-ref:")));
 
-    let workflow_permissions = inspect_workflow_permissions(root)?;
+    let workflow_permissions = inspect_workflow_permissions(repository_root)?;
 
     Ok(vec![
         finding(
@@ -122,11 +126,10 @@ pub fn inspect(root: &Path) -> Result<Vec<Finding>> {
             container_scan,
             if container_scan {
                 "Container image scanning detected in CI".to_string()
-            } else if root.join("Dockerfile").is_file() {
+            } else if target_root.join("Dockerfile").is_file() {
                 "Dockerfile detected without a container image scan".to_string()
             } else {
-                "No container image scan detected; repository does not expose a root Dockerfile"
-                    .to_string()
+                "No container image scan detected; target does not expose a Dockerfile".to_string()
             },
             "When a Dockerfile is present, build and scan the image for high/critical vulnerabilities in CI.",
         ),

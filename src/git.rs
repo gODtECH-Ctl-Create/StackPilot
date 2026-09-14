@@ -1,5 +1,6 @@
 use std::{
-    path::Path,
+    fs,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -12,6 +13,14 @@ pub fn is_available() -> bool {
         .stderr(Stdio::null())
         .status()
         .is_ok_and(|status| status.success())
+}
+
+pub fn find_repository_root(path: &Path) -> Option<PathBuf> {
+    let start = path.canonicalize().ok()?;
+    start
+        .ancestors()
+        .find(|candidate| fs::symlink_metadata(candidate.join(".git")).is_ok())
+        .map(Path::to_path_buf)
 }
 
 pub fn init_repository(directory: &Path) -> Result<()> {

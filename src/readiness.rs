@@ -147,7 +147,12 @@ fn score_control(report: &InspectionReport, control: Control) -> u8 {
 fn print_report(report: &InspectionReport, readiness: &ReadinessScore, fail_below: Option<u8>) {
     println!("StackPilot Readiness: {}/100", readiness.total);
     println!("Model: {}", readiness.model);
-    println!("Repository: {}", report.root.display());
+    if report.repository_root != report.root {
+        println!("Target: {}", report.root.display());
+        println!("Repository root: {}", report.repository_root.display());
+    } else {
+        println!("Repository: {}", report.root.display());
+    }
     println!(
         "Languages: {}",
         display_values(&report.languages, "not detected")
@@ -268,6 +273,7 @@ mod tests {
     fn report_with_statuses(statuses: &[(&'static str, FindingStatus)]) -> InspectionReport {
         InspectionReport {
             root: PathBuf::from("/tmp/example"),
+            repository_root: PathBuf::from("/tmp/example"),
             languages: vec!["TypeScript".to_string()],
             frameworks: vec!["NestJS".to_string()],
             findings: statuses
