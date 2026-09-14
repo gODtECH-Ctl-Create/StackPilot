@@ -2,6 +2,19 @@
 
 All notable StackPilot releases are summarized here. Release tags remain the authoritative immutable release points.
 
+## v0.2.1 — 14 September 2026
+
+### Field-validation hardening
+
+- Added repository-root awareness when inspecting a supported service nested inside a monorepo.
+- Nested services now inherit repository-owned CI, environment conventions, dependency lockfiles, update automation, and security workflow signals while keeping runtime/Docker/health/Terraform evaluation service-local.
+- `inspect` and `fix` now show both the target path and containing repository root for nested services.
+- Prevented `fix <nested-service>` from generating unusable nested `.github/workflows` files.
+- Repository-scoped security remediation is deferred when invoked from a nested service rather than written in the wrong location.
+- Heterogeneous repository roots now report aggregate readiness explicitly and defer automatic `.stackpilot.toml` adoption instead of assigning one golden-path identity to multiple stacks.
+- Added permanent monorepo-awareness regression coverage based on the real MortgageOps field-validation case.
+- `readiness-v1` scoring weights remain unchanged.
+
 ## v0.2.0 — 13 September 2026
 
 ### Repository intelligence
