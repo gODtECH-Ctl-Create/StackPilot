@@ -37,11 +37,11 @@ jobs:
       - name: Clippy
         run: cargo clippy --locked --all-targets -- -D warnings
 
-      - name: Commit implementation
+      - name: Commit source implementation
         shell: bash
         run: |
           set -euo pipefail
-          git add src/inspect.rs src/security.rs src/fix.rs .github/workflows/monorepo-awareness-smoke.yml
+          git add src/inspect.rs src/security.rs src/fix.rs
           git diff --cached --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
