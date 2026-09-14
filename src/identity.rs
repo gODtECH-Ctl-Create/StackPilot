@@ -1,4 +1,7 @@
-use std::{env, io::{self, IsTerminal}};
+use std::{
+    env,
+    io::{self, IsTerminal},
+};
 
 const STACKPILOT_UNICODE: &str = include_str!("../identity/stackpilot-unicode.txt");
 const STACKPILOT_ASCII: &str = include_str!("../identity/stackpilot-ascii.txt");
@@ -67,9 +70,15 @@ mod tests {
             "Opinionated project scaffolding for production-minded repositories";
 
         assert!(STACKPILOT_UNICODE.contains(DESCRIPTION));
-        assert!(STACKPILOT_UNICODE.contains(['█', '▀', '▄']));
+        assert!(
+            STACKPILOT_UNICODE.contains('█')
+                || STACKPILOT_UNICODE.contains('▀')
+                || STACKPILOT_UNICODE.contains('▄')
+        );
         assert!(STACKPILOT_ASCII.contains(DESCRIPTION));
         assert!(STACKPILOT_ASCII.contains('#'));
-        assert!(!STACKPILOT_ASCII.contains(['█', '▀', '▄']));
+        assert!(!STACKPILOT_ASCII.contains('█'));
+        assert!(!STACKPILOT_ASCII.contains('▀'));
+        assert!(!STACKPILOT_ASCII.contains('▄'));
     }
 }
