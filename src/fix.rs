@@ -150,7 +150,7 @@ fn plan_repository_with_options(
     let mut updates = Vec::new();
     let mut deferred = Vec::new();
 
-    plan_environment_fixes(&root, &report, &mut changes)?;
+    plan_environment_fixes(&root, &report, &mut changes, &mut deferred)?;
     if security_baseline {
         plan_security_baseline(&root, &report, recipes_dir, &mut changes, &mut deferred)?;
     }
@@ -201,8 +201,21 @@ fn plan_environment_fixes(
     root: &Path,
     report: &InspectionReport,
     changes: &mut Vec<PlannedChange>,
+    deferred: &mut Vec<DeferredFix>,
 ) -> Result<()> {
     if finding_status(report, "Environment config") == Some(FindingStatus::Passed) {
+        return Ok(());
+    }
+
+    if report.repository_root != root {
+        deferred.push(DeferredFix {
+            control: "Environment config",
+            reason: format!(
+                "environment configuration is inherited from repository root {}; run `stackpilot fix {}` from the repository root to review repository-scoped environment remediation",
+                report.repository_root.display(),
+                report.repository_root.display()
+            ),
+        });
         return Ok(());
     }
 
