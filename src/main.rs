@@ -3,6 +3,7 @@ mod deployment;
 mod doctor;
 mod fix;
 mod git;
+mod identity;
 mod inspect;
 mod readiness;
 mod recipe;
@@ -240,6 +241,7 @@ enum Commands {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    identity::print_if_interactive();
 
     match cli.command {
         Commands::New {
