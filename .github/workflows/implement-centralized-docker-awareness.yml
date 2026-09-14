@@ -25,6 +25,12 @@ jobs:
       - name: Format
         run: cargo fmt --all
 
+      - name: Apply Clippy machine fixes
+        run: cargo clippy --fix --locked --all-targets --allow-dirty --allow-staged -- -D warnings
+
+      - name: Reformat
+        run: cargo fmt --all
+
       - name: Test
         run: cargo test --locked
 
