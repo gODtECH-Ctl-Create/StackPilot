@@ -41,7 +41,7 @@ jobs:
       - name: Build website
         working-directory: website
         run: |
-          npm ci
+          npm install
           npm run build
 
       - name: Commit refreshed lockfile
