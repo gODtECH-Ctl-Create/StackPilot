@@ -27,7 +27,7 @@ jobs:
           ROOT="$(mktemp -d)/mortgageops"
           SERVICE="$ROOT/services/api"
 
-          mkdir -p "$ROOT/.git" "$ROOT/.github/workflows" "$SERVICE/src"
+          mkdir -p "$ROOT/.git" "$ROOT/.github/workflows" "$ROOT/infra/docker" "$SERVICE/src"
           cat > "$ROOT/.github/workflows/ci.yml" <<'YAML'
           name: CI
           permissions:
@@ -36,6 +36,18 @@ jobs:
           printf 'PORT=3000\n' > "$ROOT/.env.example"
           printf '.env\n' > "$ROOT/.gitignore"
           printf "lockfileVersion: '9.0'\n" > "$ROOT/pnpm-lock.yaml"
+          cat > "$ROOT/infra/docker/api.Dockerfile" <<'DOCKER'
+          FROM node:22-alpine
+          COPY services/api/package.json services/api/package.json
+          COPY services/api services/api
+          DOCKER
+          cat > "$ROOT/infra/docker/docker-compose.yml" <<'YAML'
+          services:
+            api:
+              build:
+                context: ../..
+                dockerfile: infra/docker/api.Dockerfile
+          YAML
 
           cat > "$SERVICE/package.json" <<'JSON'
           {
@@ -60,15 +72,20 @@ jobs:
           TS
 
           "$BIN" inspect "$SERVICE" | tee /tmp/nested-inspect.txt
-          grep -F 'StackPilot Readiness: 70/100' /tmp/nested-inspect.txt
+          grep -F 'StackPilot Readiness: 85/100' /tmp/nested-inspect.txt
           grep -F 'Repository root:' /tmp/nested-inspect.txt
+          grep -F 'Inherited from repository root: centralized Dockerfile and Compose detected (infra/docker/api.Dockerfile, infra/docker/docker-compose.yml)' /tmp/nested-inspect.txt
           grep -F 'Inherited from repository root: GitHub Actions' /tmp/nested-inspect.txt
           grep -F 'Inherited from repository root: Safe example detected' /tmp/nested-inspect.txt
           grep -F 'Lockfile detected (pnpm-lock.yaml)' /tmp/nested-inspect.txt
+          grep -F 'Dockerfile detected without a container image scan' /tmp/nested-inspect.txt
 
           "$BIN" fix "$SERVICE" --recipes-dir "$GITHUB_WORKSPACE/recipes" | tee /tmp/nested-fix.txt
-          grep -F '+ create Dockerfile' /tmp/nested-fix.txt
           grep -F '+ create .stackpilot.toml' /tmp/nested-fix.txt
+          if grep -Fq '+ create Dockerfile' /tmp/nested-fix.txt || grep -Fq '+ create compose.yaml' /tmp/nested-fix.txt || grep -Fq '+ create .dockerignore' /tmp/nested-fix.txt; then
+            echo 'centralized Docker ownership must suppress duplicate container remediation'
+            exit 1
+          fi
           if grep -Fq '+ create .github/workflows/ci.yml' /tmp/nested-fix.txt; then
             echo 'nested CI workflow must never be planned'
             exit 1

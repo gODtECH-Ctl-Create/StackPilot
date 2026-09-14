@@ -76,7 +76,13 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
     };
     let languages = detect_languages(&root, &files);
     let frameworks = detect_frameworks(&files);
-    let docker = detect_docker(&root, &files);
+    let mut docker = detect_docker(&root, &files);
+    if nested_target
+        && !docker.detected
+        && let Some(inherited) = detect_inherited_docker(&repository_root, &root, &repository_files)
+    {
+        docker = inherited;
+    }
     let mut ci = detect_ci(&repository_root, &repository_files);
     if nested_target && ci.detected {
         ci.detail = format!("Inherited from repository root: {}", ci.detail);
@@ -277,7 +283,11 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
             ),
         });
     }
-    findings.extend(security::inspect_scoped(&repository_root, &root)?);
+    findings.extend(security::inspect_scoped(
+        &repository_root,
+        &root,
+        docker.dockerfile,
+    )?);
 
     Ok(InspectionReport {
         root,
@@ -291,6 +301,13 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
 #[derive(Debug)]
 struct Detection {
     detected: bool,
+    detail: String,
+}
+
+#[derive(Debug)]
+struct DockerDetection {
+    detected: bool,
+    dockerfile: bool,
     detail: String,
 }
 
@@ -476,7 +493,7 @@ fn detect_frameworks(files: &[PathBuf]) -> Vec<String> {
     frameworks.into_iter().collect()
 }
 
-fn detect_docker(root: &Path, files: &[PathBuf]) -> Detection {
+fn detect_docker(root: &Path, files: &[PathBuf]) -> DockerDetection {
     let mut dockerfiles = Vec::new();
     let mut compose_files = Vec::new();
 
@@ -486,19 +503,17 @@ fn detect_docker(root: &Path, files: &[PathBuf]) -> Detection {
         };
         let lower = name.to_ascii_lowercase();
 
-        if lower == "dockerfile" || lower.starts_with("dockerfile.") {
+        if is_dockerfile_name(&lower) {
             dockerfiles.push(relative_path(root, path));
         }
-        if matches!(
-            lower.as_str(),
-            "compose.yml" | "compose.yaml" | "docker-compose.yml" | "docker-compose.yaml"
-        ) {
+        if is_compose_name(&lower) {
             compose_files.push(relative_path(root, path));
         }
     }
 
-    Detection {
+    DockerDetection {
         detected: !dockerfiles.is_empty() || !compose_files.is_empty(),
+        dockerfile: !dockerfiles.is_empty(),
         detail: match (dockerfiles.first(), compose_files.first()) {
             (Some(dockerfile), Some(compose)) => {
                 format!("Dockerfile and Compose detected ({dockerfile}, {compose})")
@@ -508,6 +523,165 @@ fn detect_docker(root: &Path, files: &[PathBuf]) -> Detection {
             (None, None) => "No Dockerfile or Compose configuration detected".to_string(),
         },
     }
+}
+
+fn detect_inherited_docker(
+    repository_root: &Path,
+    target_root: &Path,
+    repository_files: &[PathBuf],
+) -> Option<DockerDetection> {
+    let target_relative = relative_path(repository_root, target_root);
+    let target_relative = target_relative.trim_matches('/');
+    let service_name = target_root.file_name()?.to_str()?;
+    if target_relative.is_empty() || service_name.is_empty() {
+        return None;
+    }
+
+    let dockerfiles = repository_files
+        .iter()
+        .filter(|path| !path.starts_with(target_root))
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .map(str::to_ascii_lowercase)
+                .is_some_and(|name| is_dockerfile_name(&name))
+        })
+        .collect::<Vec<_>>();
+    let compose_files = repository_files
+        .iter()
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .map(str::to_ascii_lowercase)
+                .is_some_and(|name| is_compose_name(&name))
+        })
+        .collect::<Vec<_>>();
+
+    let mut matches = Vec::new();
+    for dockerfile in dockerfiles {
+        let Some(dockerfile_text) = read_small_text(dockerfile) else {
+            continue;
+        };
+        if !dockerfile_targets_path(&dockerfile_text, target_relative) {
+            continue;
+        }
+
+        let dockerfile_relative = relative_path(repository_root, dockerfile);
+        for compose in &compose_files {
+            let Some(compose_text) = read_small_text(compose) else {
+                continue;
+            };
+            if compose_service_references_dockerfile(
+                &compose_text,
+                service_name,
+                &dockerfile_relative,
+            ) {
+                matches.push((
+                    dockerfile_relative.clone(),
+                    relative_path(repository_root, compose),
+                ));
+            }
+        }
+    }
+
+    matches.sort();
+    matches.dedup();
+    if matches.len() != 1 {
+        return None;
+    }
+
+    let (dockerfile, compose) = matches.remove(0);
+    Some(DockerDetection {
+        detected: true,
+        dockerfile: true,
+        detail: format!(
+            "Inherited from repository root: centralized Dockerfile and Compose detected ({dockerfile}, {compose})"
+        ),
+    })
+}
+
+fn is_dockerfile_name(lower_name: &str) -> bool {
+    lower_name == "dockerfile"
+        || lower_name.starts_with("dockerfile.")
+        || lower_name.ends_with(".dockerfile")
+}
+
+fn is_compose_name(lower_name: &str) -> bool {
+    matches!(
+        lower_name,
+        "compose.yml" | "compose.yaml" | "docker-compose.yml" | "docker-compose.yaml"
+    )
+}
+
+fn dockerfile_targets_path(content: &str, target_relative: &str) -> bool {
+    let target = target_relative.replace('\\', "/").to_ascii_lowercase();
+    content.lines().any(|line| {
+        let trimmed = line.trim_start();
+        let lower = trimmed.to_ascii_lowercase().replace('\\', "/");
+        (lower.starts_with("copy ") || lower.starts_with("add ")) && lower.contains(&target)
+    })
+}
+
+fn compose_service_references_dockerfile(
+    content: &str,
+    service_name: &str,
+    dockerfile_relative: &str,
+) -> bool {
+    let expected_service = format!("{service_name}:");
+    let expected_dockerfile = dockerfile_relative
+        .replace('\\', "/")
+        .trim_start_matches("./")
+        .to_ascii_lowercase();
+    let mut services_indent = None;
+    let mut service_indent = None;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let indent = line
+            .chars()
+            .take_while(|character| character.is_whitespace())
+            .count();
+
+        if services_indent.is_none() {
+            if trimmed == "services:" {
+                services_indent = Some(indent);
+            }
+            continue;
+        }
+
+        let services_indent_value = services_indent.expect("services indent");
+        if service_indent.is_none() {
+            if indent <= services_indent_value && trimmed != "services:" {
+                return false;
+            }
+            if trimmed == expected_service && indent > services_indent_value {
+                service_indent = Some(indent);
+            }
+            continue;
+        }
+
+        let service_indent_value = service_indent.expect("service indent");
+        if indent <= service_indent_value {
+            return false;
+        }
+        let Some(value) = trimmed.strip_prefix("dockerfile:") else {
+            continue;
+        };
+        let value = value
+            .trim()
+            .trim_matches(|character| matches!(character, '\'' | '"'))
+            .replace('\\', "/")
+            .trim_start_matches("./")
+            .to_ascii_lowercase();
+        if value == expected_dockerfile {
+            return true;
+        }
+    }
+
+    false
 }
 
 fn detect_ci(root: &Path, files: &[PathBuf]) -> Detection {
@@ -920,6 +1094,17 @@ func main() {}
             "lockfileVersion: '9.0'\n",
         )
         .expect("lockfile");
+        fs::create_dir_all(repo.path().join("infra/docker")).expect("docker directory");
+        fs::write(
+            repo.path().join("infra/docker/api.Dockerfile"),
+            "FROM node:22-alpine\nCOPY services/api/package.json services/api/package.json\nCOPY services/api services/api\n",
+        )
+        .expect("centralized API Dockerfile");
+        fs::write(
+            repo.path().join("infra/docker/docker-compose.yml"),
+            "services:\n  api:\n    build:\n      context: ../..\n      dockerfile: infra/docker/api.Dockerfile\n",
+        )
+        .expect("centralized Compose");
 
         let service = repo.path().join("services/api");
         fs::create_dir_all(service.join("src")).expect("service source");
@@ -943,6 +1128,10 @@ func main() {}
         );
         assert_eq!(report.languages, vec!["TypeScript".to_string()]);
         assert_eq!(report.frameworks, vec!["NestJS".to_string()]);
+        let docker = report.finding("Docker").expect("Docker finding");
+        assert_eq!(docker.status, FindingStatus::Passed);
+        assert!(docker.detail.contains("Inherited from repository root"));
+        assert!(docker.detail.contains("infra/docker/api.Dockerfile"));
         let ci = report.finding("CI/CD").expect("CI finding");
         assert_eq!(ci.status, FindingStatus::Passed);
         assert!(ci.detail.contains("Inherited from repository root"));
@@ -965,6 +1154,38 @@ func main() {}
         assert_eq!(
             report.finding("Repository scope").expect("scope").status,
             FindingStatus::Passed
+        );
+    }
+
+    #[test]
+    fn nested_service_does_not_inherit_unrelated_centralized_dockerfile() {
+        let repo = tempdir().expect("repository");
+        fs::create_dir(repo.path().join(".git")).expect("git marker");
+        fs::create_dir_all(repo.path().join("infra/docker")).expect("docker directory");
+        fs::write(
+            repo.path().join("infra/docker/worker.Dockerfile"),
+            "FROM node:22-alpine\nCOPY services/worker services/worker\n",
+        )
+        .expect("worker Dockerfile");
+        fs::write(
+            repo.path().join("infra/docker/docker-compose.yml"),
+            "services:\n  worker:\n    build:\n      context: ../..\n      dockerfile: infra/docker/worker.Dockerfile\n",
+        )
+        .expect("compose");
+
+        let service = repo.path().join("services/api");
+        fs::create_dir_all(service.join("src")).expect("service source");
+        fs::write(
+            service.join("package.json"),
+            r#"{"dependencies":{"@nestjs/core":"latest"},"devDependencies":{"typescript":"latest"}}"#,
+        )
+        .expect("package.json");
+        fs::write(service.join("tsconfig.json"), "{}").expect("tsconfig");
+
+        let report = inspect_repository(&service).expect("inspection");
+        assert_eq!(
+            report.finding("Docker").expect("Docker finding").status,
+            FindingStatus::Missing
         );
     }
 }

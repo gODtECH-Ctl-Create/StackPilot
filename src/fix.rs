@@ -1946,4 +1946,51 @@ mod tests {
                 .any(|fix| fix.control == "StackPilot metadata")
         );
     }
+
+    #[test]
+    fn nested_service_with_centralized_docker_does_not_plan_duplicate_container_files() {
+        let repo = tempdir().expect("repository");
+        fs::create_dir(repo.path().join(".git")).expect("git marker");
+        fs::create_dir_all(repo.path().join("infra/docker")).expect("docker directory");
+        fs::write(
+            repo.path().join("infra/docker/api.Dockerfile"),
+            "FROM node:22-alpine\nCOPY services/api/package.json services/api/package.json\nCOPY services/api services/api\n",
+        )
+        .expect("centralized API Dockerfile");
+        fs::write(
+            repo.path().join("infra/docker/docker-compose.yml"),
+            "services:\n  api:\n    build:\n      context: ../..\n      dockerfile: infra/docker/api.Dockerfile\n",
+        )
+        .expect("compose");
+
+        let service = repo.path().join("services/api");
+        fs::create_dir_all(service.join("src")).expect("service source");
+        fs::write(
+            service.join("package.json"),
+            r#"{"dependencies":{"@nestjs/core":"latest"},"devDependencies":{"typescript":"latest"}}"#,
+        )
+        .expect("package.json");
+        fs::write(service.join("tsconfig.json"), "{}").expect("tsconfig");
+        fs::write(
+            service.join("src/main.ts"),
+            "app.get('/health', () => ({ status: 'ok' }));",
+        )
+        .expect("source");
+
+        let plan = plan_repository(&service, Path::new("recipes"), None).expect("fix plan");
+        for path in ["Dockerfile", "compose.yaml", ".dockerignore"] {
+            assert!(
+                !plan
+                    .changes
+                    .iter()
+                    .any(|change| change.path == Path::new(path)),
+                "centralized container ownership must suppress duplicate {path} remediation"
+            );
+        }
+        assert!(
+            plan.changes
+                .iter()
+                .any(|change| change.path == Path::new(".stackpilot.toml"))
+        );
+    }
 }
