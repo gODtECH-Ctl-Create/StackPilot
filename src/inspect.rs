@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{Context, Result, bail};
 
-use crate::{deployment, security};
+use crate::{deployment, git, security};
 
 const MAX_SCAN_DEPTH: usize = 6;
 const MAX_TEXT_FILE_SIZE: u64 = 512 * 1024;
@@ -42,6 +42,7 @@ pub struct Finding {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InspectionReport {
     pub root: PathBuf,
+    pub repository_root: PathBuf,
     pub languages: Vec<String>,
     pub frameworks: Vec<String>,
     pub findings: Vec<Finding>,
@@ -65,17 +66,36 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
     let root = root
         .canonicalize()
         .with_context(|| format!("failed to resolve repository path {}", root.display()))?;
+    let repository_root = git::find_repository_root(&root).unwrap_or_else(|| root.clone());
+    let nested_target = repository_root != root;
     let files = collect_files(&root)?;
+    let repository_files = if nested_target {
+        collect_files(&repository_root)?
+    } else {
+        files.clone()
+    };
     let languages = detect_languages(&root, &files);
     let frameworks = detect_frameworks(&files);
     let docker = detect_docker(&root, &files);
-    let ci = detect_ci(&root, &files);
+    let mut ci = detect_ci(&repository_root, &repository_files);
+    if nested_target && ci.detected {
+        ci.detail = format!("Inherited from repository root: {}", ci.detail);
+    }
     let terraform = detect_terraform(&files);
     let health = detect_health_check(&files);
-    let environment = detect_environment_hygiene(&root, &files);
-    let stackpilot_metadata = files
-        .iter()
-        .any(|path| path.file_name().and_then(|name| name.to_str()) == Some(".stackpilot.toml"));
+    let mut environment = detect_environment_hygiene(&root, &files);
+    if nested_target && environment.status == FindingStatus::Missing {
+        let inherited = detect_environment_hygiene(&repository_root, &repository_files);
+        if inherited.status != FindingStatus::Missing {
+            environment = EnvironmentDetection {
+                status: inherited.status,
+                detail: format!("Inherited from repository root: {}", inherited.detail),
+                recommendation: inherited.recommendation,
+            };
+        }
+    }
+    let stackpilot_metadata = root.join(".stackpilot.toml").is_file();
+    let heterogeneous_root = !nested_target && (languages.len() > 1 || frameworks.len() > 1);
     let deployment_recommendation =
         deployment::recommendation(&root, &languages, &frameworks, docker.detected);
     let ecs_foundation = deployment::foundation_detected(&root, deployment::AWS_ECS_FARGATE);
@@ -194,12 +214,19 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
             },
             detail: if stackpilot_metadata {
                 ".stackpilot.toml detected".to_string()
+            } else if heterogeneous_root {
+                ".stackpilot.toml not found; heterogeneous repository detected".to_string()
             } else {
                 ".stackpilot.toml not found".to_string()
             },
             recommendation: (!stackpilot_metadata).then(|| {
-                "Add StackPilot project metadata so future remediation and upgrades can track repository intent."
-                    .to_string()
+                if heterogeneous_root {
+                    "Inspect a supported service path before adopting StackPilot metadata in a heterogeneous repository."
+                        .to_string()
+                } else {
+                    "Add StackPilot project metadata so future remediation and upgrades can track repository intent."
+                        .to_string()
+                }
             }),
         },
     ];
@@ -226,10 +253,35 @@ pub fn inspect_repository(root: &Path) -> Result<InspectionReport> {
             )),
         });
     }
-    findings.extend(security::inspect(&root)?);
+    if nested_target {
+        findings.push(Finding {
+            category: "Scope",
+            name: "Repository scope",
+            status: FindingStatus::Passed,
+            detail: format!(
+                "Nested target detected; repository-level controls are inherited from {}",
+                repository_root.display()
+            ),
+            recommendation: None,
+        });
+    } else if heterogeneous_root {
+        findings.push(Finding {
+            category: "Scope",
+            name: "Repository scope",
+            status: FindingStatus::Warning,
+            detail: "Multiple languages or frameworks detected; readiness is an aggregate repository view, not a single-service readiness score"
+                .to_string(),
+            recommendation: Some(
+                "Inspect a specific service path for service-level readiness and remediation."
+                    .to_string(),
+            ),
+        });
+    }
+    findings.extend(security::inspect_scoped(&repository_root, &root)?);
 
     Ok(InspectionReport {
         root,
+        repository_root,
         languages,
         frameworks,
         findings,
@@ -848,6 +900,71 @@ func main() {}
                 .expect("health finding")
                 .status,
             FindingStatus::Missing
+        );
+    }
+
+    #[test]
+    fn nested_service_inherits_repository_owned_controls_without_cross_service_runtime_detection() {
+        let repo = tempdir().expect("repository");
+        fs::create_dir(repo.path().join(".git")).expect("git marker");
+        fs::create_dir_all(repo.path().join(".github/workflows")).expect("workflows");
+        fs::write(
+            repo.path().join(".github/workflows/ci.yml"),
+            "name: CI\npermissions:\n  contents: read\n",
+        )
+        .expect("workflow");
+        fs::write(repo.path().join(".env.example"), "PORT=3000\n").expect("env example");
+        fs::write(repo.path().join(".gitignore"), ".env\n").expect("gitignore");
+        fs::write(
+            repo.path().join("pnpm-lock.yaml"),
+            "lockfileVersion: '9.0'\n",
+        )
+        .expect("lockfile");
+
+        let service = repo.path().join("services/api");
+        fs::create_dir_all(service.join("src")).expect("service source");
+        fs::write(
+            service.join("package.json"),
+            r#"{"dependencies":{"@nestjs/core":"latest"},"devDependencies":{"typescript":"latest"}}"#,
+        )
+        .expect("package.json");
+        fs::write(service.join("tsconfig.json"), "{}").expect("tsconfig");
+        fs::write(
+            service.join("src/main.ts"),
+            "app.get('/health', () => ({ status: 'ok' }));",
+        )
+        .expect("source");
+
+        let report = inspect_repository(&service).expect("inspection");
+
+        assert_eq!(
+            report.repository_root,
+            repo.path().canonicalize().expect("repo root")
+        );
+        assert_eq!(report.languages, vec!["TypeScript".to_string()]);
+        assert_eq!(report.frameworks, vec!["NestJS".to_string()]);
+        let ci = report.finding("CI/CD").expect("CI finding");
+        assert_eq!(ci.status, FindingStatus::Passed);
+        assert!(ci.detail.contains("Inherited from repository root"));
+        let environment = report
+            .finding("Environment config")
+            .expect("environment finding");
+        assert_eq!(environment.status, FindingStatus::Passed);
+        assert!(
+            environment
+                .detail
+                .contains("Inherited from repository root")
+        );
+        assert_eq!(
+            report
+                .finding("Dependency lockfile")
+                .expect("lockfile")
+                .status,
+            FindingStatus::Passed
+        );
+        assert_eq!(
+            report.finding("Repository scope").expect("scope").status,
+            FindingStatus::Passed
         );
     }
 }

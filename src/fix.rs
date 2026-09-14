@@ -6,7 +6,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 
 use crate::{
-    deployment,
+    deployment, git,
     inspect::{self, FindingStatus, InspectionReport},
     readiness, scaffold,
     spec::ProjectSpec,
@@ -148,10 +148,11 @@ fn plan_repository_with_options(
     let readiness_before = readiness::score(&report).total;
     let mut changes = Vec::new();
     let mut updates = Vec::new();
+    let mut deferred = Vec::new();
 
     plan_environment_fixes(&root, &report, &mut changes)?;
     if security_baseline {
-        plan_security_baseline(&root, &report, recipes_dir, &mut changes)?;
+        plan_security_baseline(&root, &report, recipes_dir, &mut changes, &mut deferred)?;
     }
     let deployment_target = deployment::normalize_target(deployment_target)?;
     let cloud = if let Some(target) = deployment_target {
@@ -168,7 +169,7 @@ fn plan_repository_with_options(
         cloud
     };
     let cloud = normalize_cloud(cloud)?;
-    let mut deferred = plan_stack_fixes(
+    let mut stack_deferred = plan_stack_fixes(
         &root,
         &report,
         recipes_dir,
@@ -176,6 +177,7 @@ fn plan_repository_with_options(
         &mut changes,
         &mut updates,
     )?;
+    deferred.append(&mut stack_deferred);
     plan_deployment_fix(
         &root,
         &report,
@@ -184,7 +186,7 @@ fn plan_repository_with_options(
         &mut changes,
         &mut deferred,
     )?;
-    plan_metadata_fix(&root, &report, cloud, &mut changes)?;
+    plan_metadata_fix(&root, &report, cloud, &mut changes, &mut deferred)?;
 
     Ok(FixPlan {
         root,
@@ -260,7 +262,19 @@ fn plan_security_baseline(
     report: &InspectionReport,
     recipes_dir: &Path,
     changes: &mut Vec<PlannedChange>,
+    deferred: &mut Vec<DeferredFix>,
 ) -> Result<()> {
+    if report.repository_root != root {
+        deferred.push(DeferredFix {
+            control: "Security baseline",
+            reason: format!(
+                "security workflows and dependency automation are repository-scoped; run `stackpilot fix {} --security` from the repository root",
+                report.repository_root.display()
+            ),
+        });
+        return Ok(());
+    }
+
     let profile = match verified_stack_profile(root, report) {
         Ok(profile) => profile,
         Err(_) => return Ok(()),
@@ -854,6 +868,19 @@ fn plan_ci_fix(
     changes: &mut Vec<PlannedChange>,
     deferred: &mut Vec<DeferredFix>,
 ) -> Result<()> {
+    if let Some(repository_root) = git::find_repository_root(root)
+        && repository_root != root
+    {
+        deferred.push(DeferredFix {
+            control: "CI/CD",
+            reason: format!(
+                "GitHub Actions is repository-scoped; StackPilot will not create a nested .github/workflows directory under this service. Repository root: {}",
+                repository_root.display()
+            ),
+        });
+        return Ok(());
+    }
+
     let path = Path::new(".github/workflows/ci.yml");
     let target = root.join(path);
 
@@ -1122,9 +1149,20 @@ fn plan_metadata_fix(
     report: &InspectionReport,
     cloud: Option<&str>,
     changes: &mut Vec<PlannedChange>,
+    deferred: &mut Vec<DeferredFix>,
 ) -> Result<()> {
     let metadata_path = root.join(".stackpilot.toml");
     if path_entry_exists(&metadata_path) {
+        return Ok(());
+    }
+
+    if report.repository_root == root && (report.languages.len() > 1 || report.frameworks.len() > 1)
+    {
+        deferred.push(DeferredFix {
+            control: "StackPilot metadata",
+            reason: "heterogeneous repository detected; inspect and adopt a specific supported service path instead of assigning one golden-path identity to the whole repository"
+                .to_string(),
+        });
         return Ok(());
     }
 
@@ -1271,7 +1309,14 @@ fn first_symlink_ancestor(root: &Path, relative: &Path) -> Result<Option<PathBuf
 
 fn print_plan(plan: &FixPlan, apply: bool) {
     println!("StackPilot fix");
-    println!("Repository: {}", plan.root.display());
+    if let Some(repository_root) = git::find_repository_root(&plan.root)
+        && repository_root != plan.root
+    {
+        println!("Target: {}", plan.root.display());
+        println!("Repository root: {}", repository_root.display());
+    } else {
+        println!("Repository: {}", plan.root.display());
+    }
     println!("Mode: {}", if apply { "apply" } else { "preview" });
     println!("Readiness before: {}/100", plan.readiness_before);
 
@@ -1810,6 +1855,95 @@ mod tests {
             plan.deferred
                 .iter()
                 .any(|fix| fix.control == "Health check")
+        );
+    }
+
+    #[test]
+    fn nested_service_never_plans_repository_scoped_ci_or_environment_files() {
+        let repo = tempdir().expect("repository");
+        fs::create_dir(repo.path().join(".git")).expect("git marker");
+        fs::create_dir_all(repo.path().join(".github/workflows")).expect("workflows");
+        fs::write(repo.path().join(".github/workflows/ci.yml"), "name: CI\n").expect("workflow");
+        fs::write(repo.path().join(".env.example"), "PORT=3000\n").expect("env example");
+        fs::write(repo.path().join(".gitignore"), ".env\n").expect("gitignore");
+
+        let service = repo.path().join("services/api");
+        fs::create_dir_all(service.join("src")).expect("service source");
+        fs::write(
+            service.join("package.json"),
+            r#"{"name":"@demo/api","scripts":{"build":"tsc","start":"node dist/main.js"},"dependencies":{"@nestjs/core":"latest","@nestjs/platform-express":"latest"},"devDependencies":{"typescript":"latest"}}"#,
+        )
+        .expect("package.json");
+        fs::write(service.join("tsconfig.json"), "{}").expect("tsconfig");
+        fs::write(
+            service.join("src/main.ts"),
+            "app.get('/health', () => ({ status: 'ok' }));",
+        )
+        .expect("source");
+
+        let plan = plan_repository(&service, Path::new("recipes"), None).expect("fix plan");
+
+        assert!(
+            !plan
+                .changes
+                .iter()
+                .any(|change| change.path == Path::new(".github/workflows/ci.yml"))
+        );
+        assert!(
+            !plan
+                .changes
+                .iter()
+                .any(|change| change.path == Path::new(".env.example"))
+        );
+        assert!(
+            !plan
+                .changes
+                .iter()
+                .any(|change| change.path == Path::new(".gitignore"))
+        );
+        assert!(
+            plan.changes
+                .iter()
+                .any(|change| change.path == Path::new("Dockerfile"))
+        );
+        assert!(
+            plan.changes
+                .iter()
+                .any(|change| change.path == Path::new(".stackpilot.toml"))
+        );
+    }
+
+    #[test]
+    fn heterogeneous_repository_root_defers_stackpilot_metadata_adoption() {
+        let repo = tempdir().expect("repository");
+        fs::create_dir(repo.path().join(".git")).expect("git marker");
+        fs::write(
+            repo.path().join("package.json"),
+            r#"{"dependencies":{"next":"latest"},"devDependencies":{"typescript":"latest"}}"#,
+        )
+        .expect("package.json");
+        fs::write(repo.path().join("tsconfig.json"), "{}").expect("tsconfig");
+        let rust = repo.path().join("services/rust-api");
+        fs::create_dir_all(rust.join("src")).expect("rust service");
+        fs::write(
+            rust.join("Cargo.toml"),
+            "[package]\nname='rust-api'\nversion='0.1.0'\n[dependencies]\naxum='0.8'\n",
+        )
+        .expect("Cargo.toml");
+        fs::write(rust.join("src/main.rs"), "fn main() {}\n").expect("source");
+
+        let plan = plan_repository(repo.path(), Path::new("recipes"), None).expect("fix plan");
+
+        assert!(
+            !plan
+                .changes
+                .iter()
+                .any(|change| change.path == Path::new(".stackpilot.toml"))
+        );
+        assert!(
+            plan.deferred
+                .iter()
+                .any(|fix| fix.control == "StackPilot metadata")
         );
     }
 }
