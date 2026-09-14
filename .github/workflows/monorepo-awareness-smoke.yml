@@ -97,6 +97,50 @@ jobs:
           test ! -e "$SERVICE/Dockerfile"
           test ! -e "$SERVICE/.stackpilot.toml"
 
+          FASTAPI_ROOT="$(mktemp -d)/fastapi-template"
+          FASTAPI_BACKEND="$FASTAPI_ROOT/backend"
+          mkdir -p "$FASTAPI_ROOT/.git" "$FASTAPI_ROOT/.github/workflows" "$FASTAPI_BACKEND/app"
+          cat > "$FASTAPI_ROOT/.github/workflows/ci.yml" <<'YAML'
+          name: CI
+          permissions:
+            contents: read
+          YAML
+          cat > "$FASTAPI_ROOT/.env" <<'ENV'
+          SECRET_KEY=changethis
+          FIRST_SUPERUSER_PASSWORD=changethis
+          ENV
+          printf 'node_modules/\n' > "$FASTAPI_ROOT/.gitignore"
+          printf 'version = 1\n' > "$FASTAPI_ROOT/uv.lock"
+          cat > "$FASTAPI_BACKEND/pyproject.toml" <<'TOML'
+          [project]
+          name = "app"
+          version = "0.1.0"
+          dependencies = ["fastapi"]
+          TOML
+          cat > "$FASTAPI_BACKEND/Dockerfile" <<'DOCKER'
+          FROM python:3.13-slim
+          COPY . /app
+          DOCKER
+          cat > "$FASTAPI_BACKEND/app/main.py" <<'PY'
+          from fastapi import FastAPI
+          app = FastAPI()
+
+          @app.get('/health-check/')
+          async def health_check():
+              return True
+          PY
+
+          "$BIN" inspect "$FASTAPI_BACKEND" | tee /tmp/fastapi-inspect.txt
+          grep -F 'Inherited from repository root: .env is present without detected .gitignore protection' /tmp/fastapi-inspect.txt
+
+          "$BIN" fix "$FASTAPI_BACKEND" --recipes-dir "$GITHUB_WORKSPACE/recipes" | tee /tmp/fastapi-fix.txt
+          grep -F '! Environment config — environment configuration is inherited from repository root' /tmp/fastapi-fix.txt
+          if grep -Fq '+ create .env.example' /tmp/fastapi-fix.txt || grep -Fq '~ append .gitignore' /tmp/fastapi-fix.txt || grep -Fq '+ create .gitignore' /tmp/fastapi-fix.txt; then
+            echo 'nested fix must defer inherited repository-owned environment remediation'
+            exit 1
+          fi
+          test ! -e "$FASTAPI_BACKEND/.env.example"
+
           mkdir -p "$ROOT/services/rust-api/src"
           cat > "$ROOT/services/rust-api/Cargo.toml" <<'TOML'
           [package]
