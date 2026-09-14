@@ -2,6 +2,18 @@
 
 All notable StackPilot releases are summarized here. Release tags remain the authoritative immutable release points.
 
+## v0.2.2 — 14 September 2026
+
+### Centralized container awareness
+
+- Nested services can now inherit repository-centralized Docker ownership when a Compose service points to one exact Dockerfile and that Dockerfile explicitly targets the nested service path.
+- Added recognition for conventional `Dockerfile`, `Dockerfile.*`, and `*.Dockerfile` names.
+- Prevented `fix <nested-service>` from proposing duplicate service-local Dockerfile, Compose, or `.dockerignore` files when centralized ownership is established.
+- Container-security guidance now recognizes an inherited centralized Dockerfile.
+- Ambiguous or unrelated centralized container definitions remain unassigned rather than guessed.
+- Extended permanent monorepo regression coverage using the real MortgageOps centralized `infra/docker/api.Dockerfile` pattern.
+- `readiness-v1` scoring weights remain unchanged.
+
 ## v0.2.1 — 14 September 2026
 
 ### Field-validation hardening
