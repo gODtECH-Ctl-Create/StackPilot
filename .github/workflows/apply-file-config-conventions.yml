@@ -1,0 +1,47 @@
+name: Apply file config convention field fix
+
+on:
+  push:
+    branches:
+      - fix/file-config-conventions
+    paths:
+      - .github/scripts/apply-file-config-conventions.py
+      - .github/workflows/apply-file-config-conventions.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    if: github.actor == 'gODtECH-Ctl-Create'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/file-config-conventions
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Apply focused field fix
+        run: python .github/scripts/apply-file-config-conventions.py
+      - name: Format
+        run: |
+          cargo fmt --all
+          cargo fmt --all -- --check
+      - name: Test
+        run: cargo test --locked
+      - name: Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+      - name: Diff check
+        run: git diff --check
+      - name: Commit product source only
+        shell: bash
+        run: |
+          if git diff --quiet -- src/inspect.rs; then
+            echo "No product source changes to commit"
+            exit 0
+          fi
+          git config user.name "gODtECH-Ctl-Create"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/inspect.rs
+          git commit -m "fix: recognize safe file-based configuration conventions"
+          git push origin HEAD:fix/file-config-conventions
