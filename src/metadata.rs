@@ -138,8 +138,11 @@ mod tests {
         let repo = tempdir().expect("repository");
         fs::write(repo.path().join(".stackpilot.toml"), METADATA).expect("metadata");
         fs::create_dir_all(repo.path().join("infra/terraform")).expect("terraform directory");
-        fs::write(repo.path().join("infra/terraform/main.tf"), "terraform {}\n")
-            .expect("terraform main");
+        fs::write(
+            repo.path().join("infra/terraform/main.tf"),
+            "terraform {}\n",
+        )
+        .expect("terraform main");
 
         sync_after_fix(repo.path(), Some("aws"), true).expect("sync metadata");
 
