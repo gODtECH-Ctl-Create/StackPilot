@@ -2,6 +2,18 @@
 
 All notable StackPilot releases are summarized here. Release tags remain the authoritative immutable release points.
 
+## v0.2.5 — 15 September 2026
+
+### File-based configuration awareness
+
+- External Go/Chi field validation against `jlelse/GoBlog` exposed a false positive where dotenv was treated as the only valid configuration hygiene model.
+- StackPilot now recognizes committed YAML/YML/TOML/JSON config examples using explicit config-example naming conventions.
+- A file-based configuration convention passes when the local runtime config path (`config/` or `config.{yml,yaml,toml,json}`) is protected by `.gitignore`.
+- Incomplete file-based conventions are reported as warnings with file-config-specific guidance instead of dotenv guidance.
+- Existing `.env` detection and remediation behavior remains unchanged.
+- Added regression coverage for both safe and incomplete file-based configuration conventions.
+- `readiness-v1` scoring weights remain unchanged.
+
 ## v0.2.4 — 14 September 2026
 
 ### Repository-scope remediation safety
