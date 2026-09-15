@@ -19,96 +19,99 @@ jobs:
         with:
           ref: fix/cargo-deny-dependency-scan
       - name: Patch cargo-deny dependency scan detection
-        shell: python
+        shell: bash
         run: |
+          set -euo pipefail
+          python - <<'PY'
           from pathlib import Path
 
           path = Path('src/security.rs')
           text = path.read_text()
 
           old = '''    let dependency_scan = contains_any(
-        &workflow_lower,
-        &[
-            "dependency-review-action",
-            "trivy-action",
-            "cargo audit",
-            "npm audit",
-            "pnpm audit",
-            "pip-audit",
-            "osv-scanner",
-            "dependency-check",
-        ],
-    );'''
+              &workflow_lower,
+              &[
+                  "dependency-review-action",
+                  "trivy-action",
+                  "cargo audit",
+                  "npm audit",
+                  "pnpm audit",
+                  "pip-audit",
+                  "osv-scanner",
+                  "dependency-check",
+              ],
+          );'''
           new = '''    let cargo_deny_advisories = (workflow_lower.contains("cargo-deny-action")
-        || workflow_lower.contains("cargo deny"))
-        && workflow_lower.contains("advisories");
-    let dependency_scan = cargo_deny_advisories
-        || contains_any(
-            &workflow_lower,
-            &[
-                "dependency-review-action",
-                "trivy-action",
-                "cargo audit",
-                "npm audit",
-                "pnpm audit",
-                "pip-audit",
-                "osv-scanner",
-                "dependency-check",
-            ],
-        );'''
+              || workflow_lower.contains("cargo deny"))
+              && workflow_lower.contains("advisories");
+          let dependency_scan = cargo_deny_advisories
+              || contains_any(
+                  &workflow_lower,
+                  &[
+                      "dependency-review-action",
+                      "trivy-action",
+                      "cargo audit",
+                      "npm audit",
+                      "pnpm audit",
+                      "pip-audit",
+                      "osv-scanner",
+                      "dependency-check",
+                  ],
+              );'''
           if old not in text:
               raise SystemExit('dependency scan block not found')
           text = text.replace(old, new, 1)
 
           marker = '''    #[test]
-    fn warns_on_broad_workflow_permissions() {'''
+              fn warns_on_broad_workflow_permissions() {'''
           tests = '''    #[test]
-    fn detects_cargo_deny_advisories_as_dependency_scan() {
-        let repo = tempdir().expect("repository");
-        fs::create_dir_all(repo.path().join(".github/workflows")).expect("workflows");
-        fs::write(
-            repo.path().join(".github/workflows/deny.yml"),
-            "jobs:\n  audit:\n    steps:\n      - uses: EmbarkStudios/cargo-deny-action@v2\n        with:\n          command: check advisories\n",
-        )
-        .expect("workflow");
+              fn detects_cargo_deny_advisories_as_dependency_scan() {
+                  let repo = tempdir().expect("repository");
+                  fs::create_dir_all(repo.path().join(".github/workflows")).expect("workflows");
+                  fs::write(
+                      repo.path().join(".github/workflows/deny.yml"),
+                      "jobs:\n  audit:\n    steps:\n      - uses: EmbarkStudios/cargo-deny-action@v2\n        with:\n          command: check advisories\n",
+                  )
+                  .expect("workflow");
 
-        let findings = inspect(repo.path()).expect("security inspection");
-        assert_eq!(
-            findings
-                .iter()
-                .find(|finding| finding.name == "Dependency scanning")
-                .expect("dependency scanning")
-                .status,
-            FindingStatus::Passed
-        );
-    }
+                  let findings = inspect(repo.path()).expect("security inspection");
+                  assert_eq!(
+                      findings
+                          .iter()
+                          .find(|finding| finding.name == "Dependency scanning")
+                          .expect("dependency scanning")
+                          .status,
+                      FindingStatus::Passed
+                  );
+              }
 
-    #[test]
-    fn does_not_treat_cargo_deny_without_advisories_as_dependency_scan() {
-        let repo = tempdir().expect("repository");
-        fs::create_dir_all(repo.path().join(".github/workflows")).expect("workflows");
-        fs::write(
-            repo.path().join(".github/workflows/deny.yml"),
-            "jobs:\n  licenses:\n    steps:\n      - uses: EmbarkStudios/cargo-deny-action@v2\n        with:\n          command: check licenses\n",
-        )
-        .expect("workflow");
+              #[test]
+              fn does_not_treat_cargo_deny_without_advisories_as_dependency_scan() {
+                  let repo = tempdir().expect("repository");
+                  fs::create_dir_all(repo.path().join(".github/workflows")).expect("workflows");
+                  fs::write(
+                      repo.path().join(".github/workflows/deny.yml"),
+                      "jobs:\n  licenses:\n    steps:\n      - uses: EmbarkStudios/cargo-deny-action@v2\n        with:\n          command: check licenses\n",
+                  )
+                  .expect("workflow");
 
-        let findings = inspect(repo.path()).expect("security inspection");
-        assert_eq!(
-            findings
-                .iter()
-                .find(|finding| finding.name == "Dependency scanning")
-                .expect("dependency scanning")
-                .status,
-            FindingStatus::Missing
-        );
-    }
+                  let findings = inspect(repo.path()).expect("security inspection");
+                  assert_eq!(
+                      findings
+                          .iter()
+                          .find(|finding| finding.name == "Dependency scanning")
+                          .expect("dependency scanning")
+                          .status,
+                      FindingStatus::Missing
+                  );
+              }
 
-'''
+          '''
           if marker not in text:
               raise SystemExit('test insertion marker not found')
           text = text.replace(marker, tests + marker, 1)
           path.write_text(text)
+          PY
       - name: Validate
         run: |
           cargo fmt --check
