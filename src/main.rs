@@ -5,6 +5,7 @@ mod fix;
 mod git;
 mod identity;
 mod inspect;
+mod metadata;
 mod readiness;
 mod recipe;
 mod scaffold;
@@ -333,6 +334,7 @@ fn main() -> Result<()> {
                 deployment.as_deref(),
                 apply,
             )?;
+            metadata::sync_after_fix(&path, cloud.as_deref(), apply)?;
         }
         Commands::Upgrade {
             path,

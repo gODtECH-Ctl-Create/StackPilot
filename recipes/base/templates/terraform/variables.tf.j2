@@ -1,20 +1,20 @@
 {% if cloud == "AWS" %}variable "region" {
-  description = "AWS region for {{ project_name }}"
+  description = "AWS region for the generated StackPilot Terraform foundation"
   type        = string
   default     = "us-east-1"
 }
 {% elif cloud == "Azure" %}variable "location" {
-  description = "Azure location for {{ project_name }}"
+  description = "Azure location for the generated StackPilot Terraform foundation"
   type        = string
   default     = "eastus"
 }
 {% elif cloud == "GCP" %}variable "project_id" {
-  description = "GCP project ID for {{ project_name }}"
+  description = "GCP project ID for the generated StackPilot Terraform foundation"
   type        = string
 }
 
 variable "region" {
-  description = "GCP region for {{ project_name }}"
+  description = "GCP region for the generated StackPilot Terraform foundation"
   type        = string
   default     = "us-central1"
 }
