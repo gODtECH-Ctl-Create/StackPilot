@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export const site = {
-  currentVersion: '0.2.4',
-  releaseDate: '14 September 2026',
+  currentVersion: '0.2.5',
+  releaseDate: '15 September 2026',
   goldenPathCount: 6,
   nativeReleaseTargetCount: 4,
   proofPoints: [
@@ -76,6 +76,12 @@ export const site = {
       title: 'Repository-scope remediation safety',
       summary:
         'External FastAPI field validation hardened nested remediation so repository-owned environment findings remain visible but are deferred to repository scope instead of creating misleading service-local env files.',
+    },
+    {
+      version: 'v0.2.5',
+      title: 'File-based configuration awareness',
+      summary:
+        'External Go/Chi field validation expanded configuration hygiene beyond dotenv: safe YAML, TOML and JSON example-plus-ignore conventions are now recognized without inventing .env remediation.',
     },
   ],
 } as const;
