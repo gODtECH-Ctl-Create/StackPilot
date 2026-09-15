@@ -757,6 +757,10 @@ fn detect_health_check(files: &[PathBuf]) -> bool {
 }
 
 fn detect_environment_hygiene(root: &Path, files: &[PathBuf]) -> EnvironmentDetection {
+    if let Some(file_config) = detect_file_config_hygiene(root, files) {
+        return file_config;
+    }
+
     let example_files: Vec<String> = files
         .iter()
         .filter(|path| {
@@ -836,6 +840,83 @@ fn detect_environment_hygiene(root: &Path, files: &[PathBuf]) -> EnvironmentDete
             ),
         },
     }
+}
+
+fn detect_file_config_hygiene(root: &Path, files: &[PathBuf]) -> Option<EnvironmentDetection> {
+    let mut examples = files
+        .iter()
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(is_file_config_example_name)
+        })
+        .map(|path| relative_path(root, path))
+        .collect::<Vec<_>>();
+    examples.sort();
+
+    let example = examples.first()?;
+    let runtime_config_ignored = files.iter().any(|path| {
+        path.file_name().and_then(|name| name.to_str()) == Some(".gitignore")
+            && read_small_text(path).is_some_and(|content| gitignore_protects_file_config(&content))
+    });
+
+    Some(if runtime_config_ignored {
+        EnvironmentDetection {
+            status: FindingStatus::Passed,
+            detail: format!(
+                "Safe file-based configuration example detected and local runtime config is ignored ({example})"
+            ),
+            recommendation: None,
+        }
+    } else {
+        EnvironmentDetection {
+            status: FindingStatus::Warning,
+            detail: format!(
+                "File-based configuration example exists, but local runtime config ignore protection was not detected ({example})"
+            ),
+            recommendation: Some(
+                "Ignore the local runtime config path (for example config/ or config.yml) while keeping the example configuration committed."
+                    .to_string(),
+            ),
+        }
+    })
+}
+
+fn is_file_config_example_name(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    let Some((stem, extension)) = lower.rsplit_once('.') else {
+        return false;
+    };
+    if !matches!(extension, "yml" | "yaml" | "toml" | "json") {
+        return false;
+    }
+
+    matches!(
+        stem,
+        "example-config"
+            | "sample-config"
+            | "template-config"
+            | "config.example"
+            | "config.sample"
+            | "config.template"
+            | "config-example"
+            | "config-sample"
+            | "config-template"
+    )
+}
+
+fn gitignore_protects_file_config(content: &str) -> bool {
+    content.lines().any(|line| {
+        let line = line.trim().replace('\\', "/");
+        if line.is_empty() || line.starts_with('#') || line.starts_with('!') {
+            return false;
+        }
+        let normalized = line.trim_start_matches("./").trim_start_matches('/');
+        matches!(
+            normalized,
+            "config" | "config/" | "config.yml" | "config.yaml" | "config.toml" | "config.json"
+        )
+    })
 }
 
 fn gitignore_protects_env(content: &str) -> bool {
@@ -1007,6 +1088,48 @@ mod tests {
         let report = inspect_repository(repo.path()).expect("inspection");
         assert!(report.languages.is_empty());
         assert!(report.frameworks.is_empty());
+    }
+
+    #[test]
+    fn recognizes_safe_file_based_configuration_convention() {
+        let repo = tempdir().expect("repository");
+        fs::write(
+            repo.path().join("example-config.yml"),
+            "server:\n  publicAddress: https://example.com\n",
+        )
+        .expect("example config");
+        fs::write(repo.path().join(".gitignore"), "/config/\n").expect("gitignore");
+
+        let report = inspect_repository(repo.path()).expect("inspection");
+        let environment = report
+            .finding("Environment config")
+            .expect("environment finding");
+        assert_eq!(environment.status, FindingStatus::Passed);
+        assert!(
+            environment
+                .detail
+                .contains("file-based configuration example")
+        );
+        assert!(environment.detail.contains("example-config.yml"));
+    }
+
+    #[test]
+    fn file_based_configuration_without_runtime_ignore_is_a_warning() {
+        let repo = tempdir().expect("repository");
+        fs::write(repo.path().join("config.example.toml"), "port = 8080\n")
+            .expect("example config");
+
+        let report = inspect_repository(repo.path()).expect("inspection");
+        let environment = report
+            .finding("Environment config")
+            .expect("environment finding");
+        assert_eq!(environment.status, FindingStatus::Warning);
+        assert!(
+            environment
+                .recommendation
+                .as_deref()
+                .is_some_and(|recommendation| recommendation.contains("runtime config path"))
+        );
     }
 
     #[test]
