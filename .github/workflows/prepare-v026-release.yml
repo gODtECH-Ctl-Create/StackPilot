@@ -1,0 +1,41 @@
+name: Prepare v0.2.6 release
+
+on:
+  push:
+    branches:
+      - release/v0.2.6
+    paths:
+      - .github/workflows/prepare-v026-release.yml
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor == 'gODtECH-Ctl-Create'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: release/v0.2.6
+      - name: Apply release metadata
+        run: python .tmp/prepare_v026.py
+      - name: Refresh lockfile
+        run: cargo check
+      - name: Validate Rust
+        run: |
+          cargo fmt --check
+          cargo test --locked
+          cargo clippy --locked --all-targets -- -D warnings
+      - name: Validate website
+        working-directory: website
+        run: |
+          npm install
+          npm run build
+      - name: Commit release metadata
+        run: |
+          git config user.name "gODtECH-Ctl-Create"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md Cargo.lock website/src/data/site.ts
+          git commit -m "release: prepare StackPilot v0.2.6"
+          git push origin HEAD:release/v0.2.6
