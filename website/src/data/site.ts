@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export const site = {
-  currentVersion: '0.2.5',
+  currentVersion: '0.2.6',
   releaseDate: '15 September 2026',
   goldenPathCount: 6,
   nativeReleaseTargetCount: 4,
@@ -82,6 +82,12 @@ export const site = {
       title: 'File-based configuration awareness',
       summary:
         'External Go/Chi field validation expanded configuration hygiene beyond dotenv: safe YAML, TOML and JSON example-plus-ignore conventions are now recognized without inventing .env remediation.',
+    },
+    {
+      version: 'v0.2.6',
+      title: 'Rust advisory-scan awareness',
+      summary:
+        'External Rust/Axum field validation now recognizes cargo-deny advisory CI as dependency vulnerability scanning while keeping non-advisory cargo-deny checks from satisfying that control.',
     },
   ],
 } as const;

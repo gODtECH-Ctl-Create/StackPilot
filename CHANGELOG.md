@@ -2,6 +2,17 @@
 
 All notable StackPilot releases are summarized here. Release tags remain the authoritative immutable release points.
 
+## v0.2.6 — 15 September 2026
+
+### Rust dependency-scan awareness
+
+- External Rust/Axum field validation against `StellarSend/backend` exposed a false negative where a real `cargo-deny` RustSec advisory workflow was not recognized as dependency vulnerability scanning.
+- StackPilot now recognizes `cargo-deny` CI when the workflow explicitly enables the `advisories` check.
+- Licenses/bans/sources-only `cargo-deny` jobs do not satisfy dependency vulnerability scanning.
+- Existing dependency-scanner detection remains unchanged.
+- Added positive and negative regression coverage for advisory-capable versus non-advisory `cargo-deny` workflows.
+- `readiness-v1` scoring weights remain unchanged.
+
 ## v0.2.5 — 15 September 2026
 
 ### File-based configuration awareness
