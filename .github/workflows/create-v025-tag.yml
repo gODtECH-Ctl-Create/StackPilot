@@ -1,0 +1,35 @@
+name: Create v0.2.5 tag helper
+
+on:
+  push:
+    branches:
+      - chore/create-v025-tag
+    paths:
+      - .github/workflows/create-v025-tag.yml
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    if: github.actor == 'gODtECH-Ctl-Create'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Validate release commit and create annotated tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='b49fc82616aee6bdcb2ba813700a640b7145a158'
+          actual="$(git rev-parse origin/main)"
+          test "$actual" = "$expected"
+          if git ls-remote --exit-code --tags origin refs/tags/v0.2.5 >/dev/null 2>&1; then
+            echo 'v0.2.5 already exists; refusing to replace it'
+            exit 1
+          fi
+          git config user.name 'gODtECH-Ctl-Create'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag -a v0.2.5 "$expected" -m 'StackPilot v0.2.5'
+          git push origin refs/tags/v0.2.5
