@@ -56,9 +56,7 @@ pub fn sync_after_fix(root: &Path, cloud: Option<&str>, apply: bool) -> Result<(
 
     fs::write(&metadata_path, content)
         .with_context(|| format!("failed to update {}", metadata_path.display()))?;
-    println!(
-        "\n✓ StackPilot metadata synchronized: cloud={cloud}, terraform=true"
-    );
+    println!("\n✓ StackPilot metadata synchronized: cloud={cloud}, terraform=true");
     Ok(())
 }
 
@@ -77,7 +75,11 @@ fn synchronized_content(content: &str, cloud: &str) -> Option<String> {
 }
 
 fn replace_section_key(content: &str, section: &str, key: &str, value: &str) -> Option<String> {
-    let newline = if content.contains("\r\n") { "\r\n" } else { "\n" };
+    let newline = if content.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
     let had_trailing_newline = content.ends_with('\n');
     let target_section = format!("[{section}]");
     let target_key = format!("{key} =");
