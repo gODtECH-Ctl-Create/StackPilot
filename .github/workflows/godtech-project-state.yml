@@ -1,0 +1,12 @@
+name: gODtECH Project State
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  project-state:
+    uses: gODtECH-Ctl-Create/Cockpit/.github/workflows/project-state.yml@main
+    secrets:
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      NVIDIA_MODEL: ${{ secrets.NVIDIA_MODEL }}
