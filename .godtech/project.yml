@@ -1,0 +1,9 @@
+project:
+  state: active
+  priority: high
+  current_focus: "Golden-path scaffolding and repository engineering"
+  next_step: "Continue the production-minded field-test follow-up and managed-foundation lifecycle"
+  blockers:
+    - "Deferred hardening remains tracked in the repository roadmap."
+  status_note: "Rust core with explicit inspect, score, preview and upgrade flows."
+  last_worked_on: "2026-10-04"
